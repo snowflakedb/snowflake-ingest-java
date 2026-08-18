@@ -2685,6 +2685,67 @@ public class RowBufferTest {
   }
 
   @Test
+  public void testParquetReadBackVerificationRetrySucceeds() throws Exception {
+    ParquetRowBuffer buffer =
+        (ParquetRowBuffer) createTestBuffer(OpenChannelRequest.OnErrorOption.CONTINUE);
+    ColumnMetadata col = new ColumnMetadata();
+    col.setOrdinal(1);
+    col.setName("C1");
+    col.setPhysicalType("LOB");
+    col.setNullable(true);
+    col.setLogicalType("TEXT");
+    col.setByteLength(14);
+    col.setLength(11);
+    col.setScale(0);
+    buffer.setupSchema(Collections.singletonList(col));
+    loadData(buffer, Collections.singletonMap("C1", "hello"));
+
+    ChannelData<ParquetChunkData> data = buffer.flush();
+    data.setChannelContext(new ChannelFlushContext("name", "db", "schema", "table", 1L, "key", 0L));
+
+    // Extract the schema that was built by setupSchema so the flusher uses an identical MessageType
+    java.lang.reflect.Field schemaField = ParquetRowBuffer.class.getDeclaredField("schema");
+    schemaField.setAccessible(true);
+    org.apache.parquet.schema.MessageType parquetSchema =
+        (org.apache.parquet.schema.MessageType) schemaField.get(buffer);
+
+    // Subclass ParquetFlusher with readback enabled; verifyReadBack throws on the first call only
+    int[] callCount = {0};
+    ParquetFlusher flusher =
+        new ParquetFlusher(
+            parquetSchema,
+            MAX_CHUNK_SIZE_IN_BYTES_DEFAULT,
+            enableIcebergStreaming ? Optional.of(1) : Optional.empty(),
+            Constants.BdecParquetCompression.GZIP,
+            enableIcebergStreaming
+                ? ParquetProperties.WriterVersion.PARQUET_2_0
+                : ParquetProperties.WriterVersion.PARQUET_1_0,
+            enableIcebergStreaming,
+            enableIcebergStreaming,
+            true /* enableParquetReadbackVerification */) {
+          @Override
+          void verifyReadBack(ByteArrayOutputStream mergedData, long expectedRowCount)
+              throws IOException {
+            if (callCount[0]++ == 0) {
+              throw new IOException("simulated transient corruption");
+            }
+          }
+        };
+
+    // Serialization succeeds because the retry on attempt 2 passes verification
+    Flusher.SerializationResult result =
+        flusher.serialize(
+            Collections.singletonList(data),
+            "retry_test.bdec",
+            0,
+            FileMetadataTestingOverrides.none());
+
+    Assert.assertNotNull(result);
+    Assert.assertEquals(1L, result.rowCount);
+    Assert.assertEquals(2, callCount[0]); // attempt 1 threw, attempt 2 succeeded
+  }
+
+  @Test
   public void testParquetPageHeaderNumValuesCorruptionCaughtByRowCountCheck() throws Exception {
     ParquetRowBuffer buffer =
         (ParquetRowBuffer) createTestBuffer(OpenChannelRequest.OnErrorOption.CONTINUE);

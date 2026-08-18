@@ -146,12 +146,43 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
     addFileIdToMetadata(filePath, chunkStartOffset, metadata);
     overrideMetadataForTesting(metadata, fileMetadataTestingOverrides);
 
-    IOException lastVerifyException = null;
-    int maxAttempts = enableParquetReadbackVerification ? 3 : 1;
-    for (int attempt = 0; attempt < maxAttempts; attempt++) {
-      if (attempt > 0) {
-        mergedData.reset();
+    if (enableParquetReadbackVerification) {
+      IOException lastVerifyException = null;
+      for (int attempt = 0; attempt < 3; attempt++) {
+        if (attempt > 0) {
+          mergedData.reset();
+        }
+        parquetWriter =
+            new SnowflakeParquetWriter(
+                mergedData,
+                schema,
+                metadata,
+                firstChannelFullyQualifiedTableName,
+                maxChunkSizeInBytes,
+                maxRowGroups,
+                bdecParquetCompression,
+                parquetWriterVersion,
+                enableDictionaryEncoding);
+        rows.forEach(parquetWriter::writeRow);
+        parquetWriter.close();
+        this.verifyRowCounts(parquetWriter, rowCount, channelsDataPerTable, rows.size());
+        try {
+          verifyReadBack(mergedData, rowCount);
+          lastVerifyException = null;
+          break;
+        } catch (IOException e) {
+          lastVerifyException = e;
+          logger.logWarn(
+              "Parquet readback verification attempt {}/{} failed: {}",
+              attempt + 1,
+              3,
+              e.getMessage());
+        }
       }
+      if (lastVerifyException != null) {
+        throw lastVerifyException;
+      }
+    } else {
       parquetWriter =
           new SnowflakeParquetWriter(
               mergedData,
@@ -165,27 +196,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
               enableDictionaryEncoding);
       rows.forEach(parquetWriter::writeRow);
       parquetWriter.close();
-
       this.verifyRowCounts(parquetWriter, rowCount, channelsDataPerTable, rows.size());
-
-      if (!enableParquetReadbackVerification) {
-        break;
-      }
-      try {
-        verifyReadBack(mergedData, rowCount);
-        lastVerifyException = null;
-        break;
-      } catch (IOException e) {
-        lastVerifyException = e;
-        logger.logWarn(
-            "Parquet readback verification attempt {}/{} failed: {}",
-            attempt + 1,
-            maxAttempts,
-            e.getMessage());
-      }
-    }
-    if (lastVerifyException != null) {
-      throw lastVerifyException;
     }
 
     return new SerializationResult(
