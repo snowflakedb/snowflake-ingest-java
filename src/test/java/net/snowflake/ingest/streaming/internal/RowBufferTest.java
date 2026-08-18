@@ -2634,8 +2634,8 @@ public class RowBufferTest {
 
     try {
       flusher.verifyReadBack(result.chunkData, data.getRowCount() + 1);
-      Assert.fail("Expected IOException for row count mismatch");
-    } catch (IOException e) {
+      Assert.fail("Expected SFException for row count mismatch");
+    } catch (SFException e) {
       Assert.assertTrue(e.getMessage().contains("Row count mismatch"));
     }
   }
@@ -2678,8 +2678,8 @@ public class RowBufferTest {
 
     try {
       flusher.verifyReadBack(corrupted, data.getRowCount());
-      Assert.fail("Expected IOException for corrupt parquet data");
-    } catch (IOException e) {
+      Assert.fail("Expected SFException for corrupt parquet data");
+    } catch (SFException e) {
       Assert.assertNotNull(e.getMessage());
     }
   }
@@ -2724,10 +2724,9 @@ public class RowBufferTest {
             enableIcebergStreaming,
             true /* enableParquetReadbackVerification */) {
           @Override
-          void verifyReadBack(ByteArrayOutputStream mergedData, long expectedRowCount)
-              throws IOException {
+          void verifyReadBack(ByteArrayOutputStream mergedData, long expectedRowCount) {
             if (callCount[0]++ == 0) {
-              throw new IOException("simulated transient corruption");
+              throw new SFException(ErrorCode.INTERNAL_ERROR, "simulated transient corruption");
             }
           }
         };
@@ -2785,10 +2784,9 @@ public class RowBufferTest {
             enableIcebergStreaming,
             true /* enableParquetReadbackVerification */) {
           @Override
-          void verifyReadBack(ByteArrayOutputStream mergedData, long expectedRowCount)
-              throws IOException {
+          void verifyReadBack(ByteArrayOutputStream mergedData, long expectedRowCount) {
             if (callCount[0]++ == 0) {
-              throw new IOException("simulated transient corruption");
+              throw new SFException(ErrorCode.INTERNAL_ERROR, "simulated transient corruption");
             }
           }
         };

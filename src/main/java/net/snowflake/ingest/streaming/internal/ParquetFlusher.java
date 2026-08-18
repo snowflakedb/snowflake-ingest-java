@@ -147,7 +147,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
     overrideMetadataForTesting(metadata, fileMetadataTestingOverrides);
 
     if (enableParquetReadbackVerification) {
-      IOException lastVerifyException = null;
+      SFException lastVerifyException = null;
       for (int attempt = 0; attempt < 3; attempt++) {
         if (attempt > 0) {
           mergedData.reset();
@@ -170,7 +170,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
           verifyReadBack(mergedData, rowCount);
           lastVerifyException = null;
           break;
-        } catch (IOException e) {
+        } catch (SFException e) {
           lastVerifyException = e;
           logger.logWarn(
               "Parquet readback verification attempt {}/{} failed: {}",
@@ -323,7 +323,11 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
     }
   }
 
-  void verifyReadBack(ByteArrayOutputStream mergedData, long expectedRowCount) throws IOException {
-    BdecParquetReader.verify(mergedData.toByteArray(), expectedRowCount);
+  void verifyReadBack(ByteArrayOutputStream mergedData, long expectedRowCount) {
+    try {
+      BdecParquetReader.verify(mergedData.toByteArray(), expectedRowCount);
+    } catch (IOException e) {
+      throw new SFException(e, ErrorCode.INTERNAL_ERROR, e.getMessage());
+    }
   }
 }
