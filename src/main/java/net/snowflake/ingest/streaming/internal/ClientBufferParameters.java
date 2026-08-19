@@ -32,6 +32,8 @@ public class ClientBufferParameters {
 
   private boolean enableDictionaryEncoding;
 
+  private final boolean enableParquetReadbackVerification;
+
   /**
    * Private constructor used for test methods
    *
@@ -47,7 +49,8 @@ public class ClientBufferParameters {
       Optional<Integer> maxRowGroups,
       boolean enableIcebergStreaming,
       boolean enableDistinctValuesCount,
-      boolean enableValuesCount) {
+      boolean enableValuesCount,
+      boolean enableParquetReadbackVerification) {
     this.maxChunkSizeInBytes = maxChunkSizeInBytes;
     this.maxAllowedRowSizeInBytes = maxAllowedRowSizeInBytes;
     this.bdecParquetCompression = bdecParquetCompression;
@@ -57,6 +60,7 @@ public class ClientBufferParameters {
     this.enableDistinctValuesCount = enableDistinctValuesCount;
     this.enableValuesCount = enableValuesCount;
     this.enableDictionaryEncoding = enableIcebergStreaming;
+    this.enableParquetReadbackVerification = enableParquetReadbackVerification;
   }
 
   /**
@@ -100,6 +104,10 @@ public class ClientBufferParameters {
     this.enableDictionaryEncoding =
         enableIcebergStreaming
             && parquetWriterVersion == ParquetProperties.WriterVersion.PARQUET_2_0;
+    this.enableParquetReadbackVerification =
+        clientInternal != null
+            ? clientInternal.getParameterProvider().isEnableParquetReadbackVerification()
+            : ParameterProvider.ENABLE_PARQUET_READBACK_VERIFICATION_DEFAULT;
   }
 
   /**
@@ -125,7 +133,8 @@ public class ClientBufferParameters {
         maxRowGroups,
         enableIcebergStreaming,
         enableDistinctValuesCount,
-        enableValuesCount);
+        enableValuesCount,
+        ParameterProvider.ENABLE_PARQUET_READBACK_VERIFICATION_DEFAULT);
   }
 
   public long getMaxChunkSizeInBytes() {
@@ -166,5 +175,9 @@ public class ClientBufferParameters {
 
   public boolean isEnableDictionaryEncoding() {
     return enableDictionaryEncoding;
+  }
+
+  public boolean isEnableParquetReadbackVerification() {
+    return enableParquetReadbackVerification;
   }
 }

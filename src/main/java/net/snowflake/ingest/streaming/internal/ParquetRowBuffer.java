@@ -508,6 +508,7 @@ public class ParquetRowBuffer extends AbstractRowBuffer<ParquetChunkData> {
         clientBufferParameters.getBdecParquetCompression(),
         parquetWriterVersion,
         clientBufferParameters.isEnableDictionaryEncoding(),
-        clientBufferParameters.isEnableIcebergStreaming());
+        clientBufferParameters.isEnableIcebergStreaming(),
+        clientBufferParameters.isEnableParquetReadbackVerification());
   }
 }

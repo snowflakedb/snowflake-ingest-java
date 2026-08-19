@@ -12,6 +12,8 @@ import static net.snowflake.ingest.utils.ParameterProvider.MAX_CHUNK_SIZE_IN_BYT
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.Assert.fail;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -36,7 +38,10 @@ import net.snowflake.ingest.utils.SFException;
 import org.apache.commons.codec.binary.Hex;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.parquet.column.ParquetProperties;
+import org.apache.parquet.format.PageHeader;
+import org.apache.parquet.format.Util;
 import org.apache.parquet.hadoop.BdecParquetReader;
+import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.schema.PrimitiveType;
 import org.apache.parquet.schema.Types;
 import org.junit.Assert;
@@ -2598,5 +2603,274 @@ public class RowBufferTest {
 
   private static String getColumnType(final ChannelData<ParquetChunkData> chunkData, int columnId) {
     return chunkData.getVectors().metadata.get(Integer.toString(columnId));
+  }
+
+  @Test
+  public void testParquetReadBackVerificationCatchesRowCountMismatch() throws IOException {
+    ParquetRowBuffer buffer =
+        (ParquetRowBuffer) createTestBuffer(OpenChannelRequest.OnErrorOption.CONTINUE);
+    ColumnMetadata col = new ColumnMetadata();
+    col.setOrdinal(1);
+    col.setName("C1");
+    col.setPhysicalType("LOB");
+    col.setNullable(true);
+    col.setLogicalType("TEXT");
+    col.setByteLength(14);
+    col.setLength(11);
+    col.setScale(0);
+    buffer.setupSchema(Collections.singletonList(col));
+    loadData(buffer, Collections.singletonMap("C1", "hello"));
+
+    ChannelData<ParquetChunkData> data = buffer.flush();
+    data.setChannelContext(new ChannelFlushContext("name", "db", "schema", "table", 1L, "key", 0L));
+
+    ParquetFlusher flusher = (ParquetFlusher) buffer.createFlusher();
+    Flusher.SerializationResult result =
+        flusher.serialize(
+            Collections.singletonList(data),
+            "rowcount_test.bdec",
+            0,
+            FileMetadataTestingOverrides.none());
+
+    try {
+      flusher.verifyReadBack(result.chunkData, data.getRowCount() + 1);
+      Assert.fail("Expected SFException for row count mismatch");
+    } catch (SFException e) {
+      Assert.assertTrue(e.getMessage().contains("Row count mismatch"));
+    }
+  }
+
+  @Test
+  public void testParquetReadBackVerificationCatchesCorruption() throws IOException {
+    ParquetRowBuffer buffer =
+        (ParquetRowBuffer) createTestBuffer(OpenChannelRequest.OnErrorOption.CONTINUE);
+    ColumnMetadata col = new ColumnMetadata();
+    col.setOrdinal(1);
+    col.setName("C1");
+    col.setPhysicalType("LOB");
+    col.setNullable(true);
+    col.setLogicalType("TEXT");
+    col.setByteLength(14);
+    col.setLength(11);
+    col.setScale(0);
+    buffer.setupSchema(Collections.singletonList(col));
+    loadData(buffer, Collections.singletonMap("C1", "hello"));
+
+    ChannelData<ParquetChunkData> data = buffer.flush();
+    data.setChannelContext(new ChannelFlushContext("name", "db", "schema", "table", 1L, "key", 0L));
+
+    ParquetFlusher flusher = (ParquetFlusher) buffer.createFlusher();
+    Flusher.SerializationResult result =
+        flusher.serialize(
+            Collections.singletonList(data),
+            "corruption_test.bdec",
+            0,
+            FileMetadataTestingOverrides.none());
+
+    // Corrupt bytes in the middle of the compressed data region to simulate VM-level
+    // GZip compression corruption (reproduces FDC case 01415855 / SNOW-3837078)
+    byte[] bytes = result.chunkData.toByteArray();
+    int midpoint = bytes.length / 2;
+    bytes[midpoint] ^= 0xFF;
+    bytes[midpoint + 1] ^= 0xFF;
+    ByteArrayOutputStream corrupted = new ByteArrayOutputStream();
+    corrupted.write(bytes);
+
+    try {
+      flusher.verifyReadBack(corrupted, data.getRowCount());
+      Assert.fail("Expected SFException for corrupt parquet data");
+    } catch (SFException e) {
+      Assert.assertNotNull(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testParquetReadBackVerificationRetrySucceeds() throws Exception {
+    ParquetRowBuffer buffer =
+        (ParquetRowBuffer) createTestBuffer(OpenChannelRequest.OnErrorOption.CONTINUE);
+    ColumnMetadata col = new ColumnMetadata();
+    col.setOrdinal(1);
+    col.setName("C1");
+    col.setPhysicalType("LOB");
+    col.setNullable(true);
+    col.setLogicalType("TEXT");
+    col.setByteLength(14);
+    col.setLength(11);
+    col.setScale(0);
+    buffer.setupSchema(Collections.singletonList(col));
+    loadData(buffer, Collections.singletonMap("C1", "hello"));
+
+    ChannelData<ParquetChunkData> data = buffer.flush();
+    data.setChannelContext(new ChannelFlushContext("name", "db", "schema", "table", 1L, "key", 0L));
+
+    // Extract the schema that was built by setupSchema so the flusher uses an identical MessageType
+    java.lang.reflect.Field schemaField = ParquetRowBuffer.class.getDeclaredField("schema");
+    schemaField.setAccessible(true);
+    org.apache.parquet.schema.MessageType parquetSchema =
+        (org.apache.parquet.schema.MessageType) schemaField.get(buffer);
+
+    // Subclass ParquetFlusher with readback enabled; verifyReadBack throws on the first call only
+    int[] callCount = {0};
+    ParquetFlusher flusher =
+        new ParquetFlusher(
+            parquetSchema,
+            MAX_CHUNK_SIZE_IN_BYTES_DEFAULT,
+            enableIcebergStreaming ? Optional.of(1) : Optional.empty(),
+            Constants.BdecParquetCompression.GZIP,
+            enableIcebergStreaming
+                ? ParquetProperties.WriterVersion.PARQUET_2_0
+                : ParquetProperties.WriterVersion.PARQUET_1_0,
+            enableIcebergStreaming,
+            enableIcebergStreaming,
+            true /* enableParquetReadbackVerification */) {
+          @Override
+          void verifyReadBack(ByteArrayOutputStream mergedData, long expectedRowCount) {
+            if (callCount[0]++ == 0) {
+              throw new SFException(ErrorCode.INTERNAL_ERROR, "simulated transient corruption");
+            }
+          }
+        };
+
+    // Serialization succeeds because the retry on attempt 2 passes verification
+    Flusher.SerializationResult result =
+        flusher.serialize(
+            Collections.singletonList(data),
+            "retry_test.bdec",
+            0,
+            FileMetadataTestingOverrides.none());
+
+    Assert.assertNotNull(result);
+    Assert.assertEquals(1L, result.rowCount);
+    Assert.assertEquals(2, callCount[0]); // attempt 1 threw, attempt 2 succeeded
+  }
+
+  @Test
+  public void testParquetReadBackVerificationRetrySucceedsMultipleRows() throws Exception {
+    ParquetRowBuffer buffer =
+        (ParquetRowBuffer) createTestBuffer(OpenChannelRequest.OnErrorOption.CONTINUE);
+    ColumnMetadata col = new ColumnMetadata();
+    col.setOrdinal(1);
+    col.setName("C1");
+    col.setPhysicalType("LOB");
+    col.setNullable(true);
+    col.setLogicalType("TEXT");
+    col.setByteLength(14);
+    col.setLength(11);
+    col.setScale(0);
+    buffer.setupSchema(Collections.singletonList(col));
+    loadData(buffer, Collections.singletonMap("C1", "row_one"));
+    loadData(buffer, Collections.singletonMap("C1", "row_two"));
+    loadData(buffer, Collections.singletonMap("C1", "row_three"));
+
+    ChannelData<ParquetChunkData> data = buffer.flush();
+    data.setChannelContext(new ChannelFlushContext("name", "db", "schema", "table", 1L, "key", 0L));
+
+    java.lang.reflect.Field schemaField = ParquetRowBuffer.class.getDeclaredField("schema");
+    schemaField.setAccessible(true);
+    org.apache.parquet.schema.MessageType parquetSchema =
+        (org.apache.parquet.schema.MessageType) schemaField.get(buffer);
+
+    int[] callCount = {0};
+    ParquetFlusher flusher =
+        new ParquetFlusher(
+            parquetSchema,
+            MAX_CHUNK_SIZE_IN_BYTES_DEFAULT,
+            enableIcebergStreaming ? Optional.of(1) : Optional.empty(),
+            Constants.BdecParquetCompression.GZIP,
+            enableIcebergStreaming
+                ? ParquetProperties.WriterVersion.PARQUET_2_0
+                : ParquetProperties.WriterVersion.PARQUET_1_0,
+            enableIcebergStreaming,
+            enableIcebergStreaming,
+            true /* enableParquetReadbackVerification */) {
+          @Override
+          void verifyReadBack(ByteArrayOutputStream mergedData, long expectedRowCount) {
+            if (callCount[0]++ == 0) {
+              throw new SFException(ErrorCode.INTERNAL_ERROR, "simulated transient corruption");
+            }
+          }
+        };
+
+    Flusher.SerializationResult result =
+        flusher.serialize(
+            Collections.singletonList(data),
+            "retry_multirow_test.bdec",
+            0,
+            FileMetadataTestingOverrides.none());
+
+    Assert.assertNotNull(result);
+    Assert.assertEquals(3L, result.rowCount);
+    Assert.assertEquals(2, callCount[0]);
+  }
+
+  @Test
+  public void testParquetPageHeaderNumValuesCorruptionCaughtByRowCountCheck() throws Exception {
+    ParquetRowBuffer buffer =
+        (ParquetRowBuffer) createTestBuffer(OpenChannelRequest.OnErrorOption.CONTINUE);
+    ColumnMetadata col = new ColumnMetadata();
+    col.setOrdinal(1);
+    col.setName("C1");
+    col.setPhysicalType("LOB");
+    col.setNullable(true);
+    col.setLogicalType("TEXT");
+    col.setByteLength(14);
+    col.setLength(11);
+    col.setScale(0);
+    buffer.setupSchema(Collections.singletonList(col));
+    loadData(buffer, Collections.singletonMap("C1", "hello"));
+
+    ChannelData<ParquetChunkData> data = buffer.flush();
+    data.setChannelContext(new ChannelFlushContext("name", "db", "schema", "table", 1L, "key", 0L));
+
+    ParquetFlusher flusher = (ParquetFlusher) buffer.createFlusher();
+    Flusher.SerializationResult result =
+        flusher.serialize(
+            Collections.singletonList(data),
+            "num_values_corruption_test.bdec",
+            0,
+            FileMetadataTestingOverrides.none());
+
+    byte[] bytes = result.chunkData.toByteArray();
+
+    // Find the byte offset of the first data page header
+    long pageOffset;
+    try (ParquetFileReader pfr =
+        ParquetFileReader.open(new BdecParquetReader.BdecInputFile(bytes))) {
+      pageOffset = pfr.getFooter().getBlocks().get(0).getColumns().get(0).getFirstDataPageOffset();
+    }
+
+    // Deserialize the Thrift-compact page header
+    ByteArrayInputStream headerIn =
+        new ByteArrayInputStream(bytes, (int) pageOffset, bytes.length - (int) pageOffset);
+    PageHeader pageHeader = Util.readPageHeader(headerIn);
+    int originalHeaderSize = (bytes.length - (int) pageOffset) - headerIn.available();
+
+    // Simulate SNOW-3903306: bit-flip corrupts num_values to 0 in the page header.
+    // Parquet v1 pages use data_page_header; Parquet v2 (Iceberg) uses data_page_header_v2.
+    if (pageHeader.data_page_header != null) {
+      pageHeader.data_page_header.num_values = 0;
+    } else {
+      pageHeader.data_page_header_v2.num_values = 0;
+    }
+
+    // Re-serialize the header with corrupted num_values and reassemble the file
+    ByteArrayOutputStream modifiedHeader = new ByteArrayOutputStream();
+    Util.writePageHeader(pageHeader, modifiedHeader);
+    ByteArrayOutputStream patched = new ByteArrayOutputStream();
+    patched.write(bytes, 0, (int) pageOffset);
+    patched.write(modifiedHeader.toByteArray());
+    patched.write(
+        bytes,
+        (int) pageOffset + originalHeaderSize,
+        bytes.length - (int) pageOffset - originalHeaderSize);
+
+    // verify() catches the corruption — the reader encounters an error processing the
+    // corrupted page header and throws IOException before or during row count validation
+    try {
+      BdecParquetReader.verify(patched.toByteArray(), data.getRowCount());
+      Assert.fail("Expected IOException for num_values corruption");
+    } catch (IOException e) {
+      Assert.assertNotNull(e.getMessage());
+    }
   }
 }

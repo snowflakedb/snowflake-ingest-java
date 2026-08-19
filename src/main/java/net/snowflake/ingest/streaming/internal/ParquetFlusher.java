@@ -18,6 +18,7 @@ import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.SFException;
 import org.apache.parquet.Preconditions;
 import org.apache.parquet.column.ParquetProperties;
+import org.apache.parquet.hadoop.BdecParquetReader;
 import org.apache.parquet.hadoop.SnowflakeParquetWriter;
 import org.apache.parquet.schema.MessageType;
 
@@ -35,6 +36,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
   private final ParquetProperties.WriterVersion parquetWriterVersion;
   private final boolean enableDictionaryEncoding;
   private final boolean enableIcebergStreaming;
+  private final boolean enableParquetReadbackVerification;
 
   /** Construct parquet flusher from its schema. */
   public ParquetFlusher(
@@ -44,7 +46,8 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
       Constants.BdecParquetCompression bdecParquetCompression,
       ParquetProperties.WriterVersion parquetWriterVersion,
       boolean enableDictionaryEncoding,
-      boolean enableIcebergStreaming) {
+      boolean enableIcebergStreaming,
+      boolean enableParquetReadbackVerification) {
     this.schema = schema;
     this.maxChunkSizeInBytes = maxChunkSizeInBytes;
     this.maxRowGroups = maxRowGroups;
@@ -52,6 +55,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
     this.parquetWriterVersion = parquetWriterVersion;
     this.enableDictionaryEncoding = enableDictionaryEncoding;
     this.enableIcebergStreaming = enableIcebergStreaming;
+    this.enableParquetReadbackVerification = enableParquetReadbackVerification;
   }
 
   @Override
@@ -77,7 +81,7 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
     String firstChannelFullyQualifiedTableName = null;
     Map<String, RowBufferStats> columnEpStatsMapCombined = null;
     List<List<Object>> rows = null;
-    SnowflakeParquetWriter parquetWriter;
+    SnowflakeParquetWriter parquetWriter = null;
     ByteArrayOutputStream mergedData = new ByteArrayOutputStream();
     Pair<Long, Long> chunkMinMaxInsertTimeInMs = null;
 
@@ -141,21 +145,59 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
     Map<String, String> metadata = channelsDataPerTable.get(0).getVectors().metadata;
     addFileIdToMetadata(filePath, chunkStartOffset, metadata);
     overrideMetadataForTesting(metadata, fileMetadataTestingOverrides);
-    parquetWriter =
-        new SnowflakeParquetWriter(
-            mergedData,
-            schema,
-            metadata,
-            firstChannelFullyQualifiedTableName,
-            maxChunkSizeInBytes,
-            maxRowGroups,
-            bdecParquetCompression,
-            parquetWriterVersion,
-            enableDictionaryEncoding);
-    rows.forEach(parquetWriter::writeRow);
-    parquetWriter.close();
 
-    this.verifyRowCounts(parquetWriter, rowCount, channelsDataPerTable, rows.size());
+    if (enableParquetReadbackVerification) {
+      SFException lastVerifyException = null;
+      for (int attempt = 0; attempt < 3; attempt++) {
+        if (attempt > 0) {
+          mergedData.reset();
+        }
+        parquetWriter =
+            new SnowflakeParquetWriter(
+                mergedData,
+                schema,
+                metadata,
+                firstChannelFullyQualifiedTableName,
+                maxChunkSizeInBytes,
+                maxRowGroups,
+                bdecParquetCompression,
+                parquetWriterVersion,
+                enableDictionaryEncoding);
+        rows.forEach(parquetWriter::writeRow);
+        parquetWriter.close();
+        this.verifyRowCounts(parquetWriter, rowCount, channelsDataPerTable, rows.size());
+        try {
+          verifyReadBack(mergedData, rowCount);
+          lastVerifyException = null;
+          break;
+        } catch (SFException e) {
+          lastVerifyException = e;
+          logger.logWarn(
+              "Parquet readback verification attempt {}/{} failed: {}",
+              attempt + 1,
+              3,
+              e.getMessage());
+        }
+      }
+      if (lastVerifyException != null) {
+        throw lastVerifyException;
+      }
+    } else {
+      parquetWriter =
+          new SnowflakeParquetWriter(
+              mergedData,
+              schema,
+              metadata,
+              firstChannelFullyQualifiedTableName,
+              maxChunkSizeInBytes,
+              maxRowGroups,
+              bdecParquetCompression,
+              parquetWriterVersion,
+              enableDictionaryEncoding);
+      rows.forEach(parquetWriter::writeRow);
+      parquetWriter.close();
+      this.verifyRowCounts(parquetWriter, rowCount, channelsDataPerTable, rows.size());
+    }
 
     return new SerializationResult(
         channelsMetadataList,
@@ -278,6 +320,14 @@ public class ParquetFlusher implements Flusher<ParquetChunkData> {
               channelsCountInMetadata,
               javaSerializationTotalRowCount,
               channelNames));
+    }
+  }
+
+  void verifyReadBack(ByteArrayOutputStream mergedData, long expectedRowCount) {
+    try {
+      BdecParquetReader.verify(mergedData.toByteArray(), expectedRowCount);
+    } catch (IOException e) {
+      throw new SFException(e, ErrorCode.INTERNAL_ERROR, e.getMessage());
     }
   }
 }

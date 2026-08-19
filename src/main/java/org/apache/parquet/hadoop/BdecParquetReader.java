@@ -78,6 +78,24 @@ public class BdecParquetReader implements AutoCloseable {
   }
 
   /**
+   * Verifies that all data in a parquet blob can be decompressed and has the expected row count.
+   * Catches compressed-data corruption (e.g. GZIP CRC32 failures) and row count mismatches.
+   */
+  public static void verify(byte[] data, long expectedRowCount) throws IOException {
+    long actualRowCount = 0;
+    try (BdecParquetReader reader = new BdecParquetReader(data)) {
+      while (reader.read() != null) {
+        actualRowCount++;
+      }
+    }
+    if (actualRowCount != expectedRowCount) {
+      throw new IOException(
+          String.format(
+              "Row count mismatch: expected %d, got %d", expectedRowCount, actualRowCount));
+    }
+  }
+
+  /**
    * Reads the input data using Parquet reader and writes them using a Parquet Writer.
    *
    * @param data input data to be read first and then written with outputWriter
