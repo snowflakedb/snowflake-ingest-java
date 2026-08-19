@@ -9,7 +9,7 @@
   <!-- Arifact name and version information -->
   <groupId>net.snowflake</groupId>
   <artifactId>snowflake-ingest-sdk</artifactId>
-  <version>4.4.3</version>
+  <version>5.0.0</version>
   <packaging>jar</packaging>
   <name>Snowflake Ingest SDK</name>
   <description>Snowflake Ingest SDK</description>
@@ -36,47 +36,54 @@
     <url>https://github.com/snowflakedb/snowflake-ingest-java/tree/master</url>
   </scm>
 
-  <!-- Set our Language Level to Java 8 -->
+  <!-- Set our Language Level to Java 17 -->
   <properties>
     <amazonaws.version>1.12.655</amazonaws.version>
     <apache.httpclient.version>4.5.14</apache.httpclient.version>
     <apache.httpcomponents.version>4.4.16</apache.httpcomponents.version>
+    <!-- Test-JVM add-opens: Java 17's module system blocks the deep reflection that
+         PowerMock, snowflake-jdbc, and JWT/RSA key handling perform into java.base
+         internals; without these the tests throw InaccessibleObjectException. Each
+         package corresponds to a concrete test that needed it. Applied via
+         surefire/failsafe argLine only (test-only, not shipped). -->
+    <argLine/>
+    <argLineAddOpens>--add-opens=java.base/java.lang=ALL-UNNAMED --add-opens=java.base/java.lang.reflect=ALL-UNNAMED --add-opens=java.base/java.io=ALL-UNNAMED --add-opens=java.base/java.util=ALL-UNNAMED --add-opens=java.base/java.util.concurrent=ALL-UNNAMED --add-opens=java.base/java.nio=ALL-UNNAMED --add-opens=java.base/java.nio.file=ALL-UNNAMED --add-opens=java.base/java.net=ALL-UNNAMED --add-opens=java.base/java.text=ALL-UNNAMED --add-opens=java.base/java.math=ALL-UNNAMED --add-opens=java.base/sun.nio.fs=ALL-UNNAMED --add-opens=java.base/sun.security.rsa=ALL-UNNAMED --add-opens=java.base/sun.security.x509=ALL-UNNAMED</argLineAddOpens>
     <auto.publish.central>true</auto.publish.central>
-    <avro.version>1.11.4</avro.version>
+    <avro.version>1.12.1</avro.version>
     <bouncycastle.version>1.79</bouncycastle.version>
     <codehaus.version>1.9.13</codehaus.version>
-    <commonscodec.version>1.18.0</commonscodec.version>
-    <commonscompress.version>1.27.1</commonscompress.version>
+    <commonscodec.version>1.19.0</commonscodec.version>
+    <commonscompress.version>1.28.0</commonscompress.version>
     <commonsconfiguration2.version>2.10.1</commonsconfiguration2.version>
-    <commonsio.version>2.17.0</commonsio.version>
+    <commonsio.version>2.20.0</commonsio.version>
     <commonslang3.version>3.18.0</commonslang3.version>
     <commonstext.version>1.13.0</commonstext.version>
-    <fasterxml.version>2.18.1</fasterxml.version>
+    <fasterxml.version>2.21.3</fasterxml.version>
     <google.httpclient.version>1.45.0</google.httpclient.version>
     <grpc.version>1.77.0</grpc.version>
     <gson.version>2.11.0</gson.version>
     <guava.version>33.4.8-jre</guava.version>
     <hadoop.version>3.4.2</hadoop.version>
-    <iceberg.version>1.6.1</iceberg.version>
+    <iceberg.version>1.11.0</iceberg.version>
     <jacoco.skip.instrument>true</jacoco.skip.instrument>
     <jacoco.version>0.8.13</jacoco.version>
     <license.processing.dependencyJarsDir>${project.build.directory}/dependency-jars</license.processing.dependencyJarsDir>
     <license.processing.dependencyListFile>${project.build.directory}/dependency-list.txt</license.processing.dependencyListFile>
     <license.processing.resourcesRoot>${project.build.directory}/generated-licenses-info</license.processing.resourcesRoot>
     <license.processing.targetDir>${license.processing.resourcesRoot}/META-INF/third-party-licenses</license.processing.targetDir>
-    <maven.compiler.source>1.8</maven.compiler.source>
-    <maven.compiler.target>1.8</maven.compiler.target>
+    <maven.compiler.source>17</maven.compiler.source>
+    <maven.compiler.target>17</maven.compiler.target>
     <net.minidev.version>2.5.2</net.minidev.version>
     <netty.version>4.1.127.Final</netty.version>
     <nimbusds.version>10.0.2</nimbusds.version>
     <objenesis.version>3.1</objenesis.version>
-    <parquet.version>1.14.4</parquet.version>
+    <parquet.version>1.17.1</parquet.version>
     <powermock.version>2.0.9</powermock.version>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <protobuf.version>4.27.5</protobuf.version>
     <shadeBase>net.snowflake.ingest.internal</shadeBase>
-    <slf4j.version>1.7.36</slf4j.version>
-    <snappy.version>1.1.10.5</snappy.version>
+    <slf4j.version>2.0.17</slf4j.version>
+    <snappy.version>1.1.10.7</snappy.version>
     <snowjdbc.version>3.25.1</snowjdbc.version>
     <threetenbp.version>1.7.0</threetenbp.version>
     <version.plugin.buildhelper>3.6.1</version.plugin.buildhelper>
@@ -1166,7 +1173,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-failsafe-plugin</artifactId>
-          <version>3.0.0-M5</version>
+          <version>3.2.5</version>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
@@ -1266,8 +1273,8 @@
         <version>2.5.1</version>
         <inherited>true</inherited>
         <configuration>
-          <source>1.8</source>
-          <target>1.8</target>
+          <source>17</source>
+          <target>17</target>
         </configuration>
       </plugin>
       <plugin>
@@ -1352,7 +1359,7 @@
             </goals>
             <configuration>
               <additionalparam>-Xdoclint:none</additionalparam>
-              <source>8</source>
+              <source>17</source>
             </configuration>
           </execution>
         </executions>
@@ -1374,6 +1381,16 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
         <configuration>
+          <!-- The SDK ships classes in org.apache.parquet.* (e.g.
+               SnowflakeParquetWriter) to reach package-private parquet API.
+               That split package only resolves on the classpath, so force
+               classpath mode; on the module path JDK 17 throws
+               ClassNotFoundException for the real parquet classes. -->
+          <useModulePath>false</useModulePath>
+          <!-- PowerMock 2.0.9 uses deep reflection (setAccessible) on JDK
+               internals; Java 17's module system blocks this without an
+               explicit opens. @{argLine} preserves the JaCoCo agent. -->
+          <argLine>@{argLine} ${argLineAddOpens}</argLine>
           <excludes>
             <exclude>**/TestSimpleIngestLocal.java</exclude>
           </excludes>
@@ -1413,9 +1430,10 @@
                             |Apache 2</licenseMerge>
             <licenseMerge>BSD 2-Clause License
                             |The BSD License |BSD</licenseMerge>
-            <licenseMerge>The MIT License|MIT License|MIT license</licenseMerge>
+            <licenseMerge>The MIT License|MIT License|MIT license|MIT</licenseMerge>
             <licenseMerge>3-Clause BSD License|BSD-3-Clause</licenseMerge>
             <licenseMerge>The Go License|Go License</licenseMerge>
+            <licenseMerge>EDL 1.0|Eclipse Distribution License - v 1.0</licenseMerge>
           </licenseMerges>
         </configuration>
         <executions>
@@ -1740,6 +1758,10 @@
                   <pattern>org.jspecify</pattern>
                   <shadedPattern>${shadeBase}.org.jspecify</shadedPattern>
                 </relocation>
+                <relocation>
+                  <pattern>org.locationtech.jts</pattern>
+                  <shadedPattern>${shadeBase}.org.locationtech.jts</shadedPattern>
+                </relocation>
               </relocations>
               <filters>
                 <!-- Only bundle RecordReader and peer types; exclude resource files and hdfs classes -->
@@ -1970,6 +1992,8 @@
             <configuration>
               <groups>${failsafe.groups}</groups>
               <excludedGroups>${failsafe.excludedGroups}</excludedGroups>
+              <useModulePath>false</useModulePath>
+              <argLine>@{argLine} ${argLineAddOpens}</argLine>
             </configuration>
             <executions>
               <execution>

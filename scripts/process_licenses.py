@@ -78,6 +78,7 @@ ADDITIONAL_LICENSES_MAP = {
     "com.thoughtworks.paranamer:paranamer": BSD_2_CLAUSE_LICENSE,
     "org.roaringbitmap:RoaringBitmap": APACHE_LICENSE,
     "org.roaringbitmap:shims": APACHE_LICENSE,
+    "org.locationtech.jts:jts-core": EDL_10_LICENSE,
     "com.amazonaws:aws-java-sdk-core": APACHE_LICENSE,
     "software.amazon.ion:ion-java": APACHE_LICENSE,
     "com.amazonaws:aws-java-sdk-kms": APACHE_LICENSE,
