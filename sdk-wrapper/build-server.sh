@@ -31,6 +31,3 @@ echo "Building server application..."
 cd "$SCRIPT_DIR"
 mvn clean package -DskipTests
 
-echo "=== Build Complete ==="
-echo "To run the server:"
-java -jar target/sdk-wrapper-1.0-SNAPSHOT.jar --enable.access.logging
