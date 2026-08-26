@@ -2650,6 +2650,53 @@ public class RowBufferTest {
     col.setPhysicalType("LOB");
     col.setNullable(true);
     col.setLogicalType("TEXT");
+    col.setByteLength(14);
+    col.setLength(11);
+    col.setScale(0);
+    buffer.setupSchema(Collections.singletonList(col));
+    loadData(buffer, Collections.singletonMap("C1", "hello"));
+
+    ChannelData<ParquetChunkData> data = buffer.flush();
+    data.setChannelContext(new ChannelFlushContext("name", "db", "schema", "table", 1L, "key", 0L));
+
+    ParquetFlusher flusher = (ParquetFlusher) buffer.createFlusher();
+    Flusher.SerializationResult result =
+        flusher.serialize(
+            Collections.singletonList(data),
+            "corruption_test.bdec",
+            0,
+            FileMetadataTestingOverrides.none());
+
+    // Midpoint on this 1-row blob is in the footer. Two-byte XOR is version-dependent
+    // (4.4.4 vs 4.4.4-SNAPSHOT slides the hit onto a neighboring thrift field); 16 bytes
+    // makes footer parse fail either way.
+    byte[] bytes = result.chunkData.toByteArray();
+    int midpoint = bytes.length / 2;
+    int corruptUntil = Math.min(midpoint + 16, bytes.length);
+    for (int i = midpoint; i < corruptUntil; i++) {
+      bytes[i] ^= 0xFF;
+    }
+    ByteArrayOutputStream corrupted = new ByteArrayOutputStream();
+    corrupted.write(bytes);
+
+    try {
+      flusher.verifyReadBack(corrupted, data.getRowCount());
+      Assert.fail("Expected SFException for corrupt parquet data");
+    } catch (SFException e) {
+      Assert.assertNotNull(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testParquetReadBackVerificationCatchesPageBodyCorruption() throws IOException {
+    ParquetRowBuffer buffer =
+        (ParquetRowBuffer) createTestBuffer(OpenChannelRequest.OnErrorOption.CONTINUE);
+    ColumnMetadata col = new ColumnMetadata();
+    col.setOrdinal(1);
+    col.setName("C1");
+    col.setPhysicalType("LOB");
+    col.setNullable(true);
+    col.setLogicalType("TEXT");
     col.setByteLength(256);
     col.setLength(256);
     col.setScale(0);
@@ -2673,12 +2720,10 @@ public class RowBufferTest {
     Flusher.SerializationResult result =
         flusher.serialize(
             Collections.singletonList(data),
-            "corruption_test.bdec",
+            "corruption_page_body_test.bdec",
             0,
             FileMetadataTestingOverrides.none());
 
-    // Corrupt bytes in the middle of the compressed data region to simulate VM-level
-    // GZip compression corruption (reproduces FDC case 01415855 / SNOW-3837078)
     byte[] bytes = result.chunkData.toByteArray();
     int midpoint = bytes.length / 2;
     long pageOffset;
@@ -2705,7 +2750,7 @@ public class RowBufferTest {
 
     try {
       flusher.verifyReadBack(corrupted, data.getRowCount());
-      Assert.fail("Expected SFException for corrupt parquet data");
+      Assert.fail("Expected SFException for corrupt parquet page body");
     } catch (SFException e) {
       Assert.assertNotNull(e.getMessage());
     }
