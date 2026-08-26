@@ -2654,8 +2654,6 @@ public class RowBufferTest {
     col.setLength(256);
     col.setScale(0);
     buffer.setupSchema(Collections.singletonList(col));
-    // A single short row is footer-dominated, so length/2 hits FileMetaData rather than
-    // GZIP. Unique pangrams make the compressed page the majority of the file.
     String sentence = "The quick brown fox jumps over the lazy dog. ";
     List<Map<String, Object>> rows = new ArrayList<>();
     for (int i = 0; i < 32; i++) {

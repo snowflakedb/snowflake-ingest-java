@@ -96,8 +96,6 @@ public class BdecParquetReader implements AutoCloseable {
                 "Row count mismatch: expected %d, got %d", expectedRowCount, actualRowCount));
       }
     } catch (ParquetDecodingException e) {
-      // Page/GZIP decode failures are unchecked; treat them like other I/O errors so
-      // verifyReadBack can wrap SFException and retry.
       throw new IOException(e);
     }
   }
