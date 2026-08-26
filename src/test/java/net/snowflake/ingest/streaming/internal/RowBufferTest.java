@@ -2650,11 +2650,23 @@ public class RowBufferTest {
     col.setPhysicalType("LOB");
     col.setNullable(true);
     col.setLogicalType("TEXT");
-    col.setByteLength(14);
-    col.setLength(11);
+    col.setByteLength(256);
+    col.setLength(256);
     col.setScale(0);
     buffer.setupSchema(Collections.singletonList(col));
-    loadData(buffer, Collections.singletonMap("C1", "hello"));
+    // A single short row is footer-dominated, so length/2 hits FileMetaData rather than
+    // GZIP. Unique pangrams make the compressed page the majority of the file.
+    String sentence = "The quick brown fox jumps over the lazy dog. ";
+    List<Map<String, Object>> rows = new ArrayList<>();
+    for (int i = 0; i < 32; i++) {
+      rows.add(
+          Collections.singletonMap(
+              "C1",
+              sentence
+                  + java.util.UUID.nameUUIDFromBytes(
+                      ("bdec-corruption-row-" + i).getBytes(StandardCharsets.UTF_8))));
+    }
+    Assert.assertFalse(buffer.insertRows(rows, "1", "32").hasErrors());
 
     ChannelData<ParquetChunkData> data = buffer.flush();
     data.setChannelContext(new ChannelFlushContext("name", "db", "schema", "table", 1L, "key", 0L));
@@ -2671,8 +2683,25 @@ public class RowBufferTest {
     // GZip compression corruption (reproduces FDC case 01415855 / SNOW-3837078)
     byte[] bytes = result.chunkData.toByteArray();
     int midpoint = bytes.length / 2;
-    bytes[midpoint] ^= 0xFF;
-    bytes[midpoint + 1] ^= 0xFF;
+    long pageOffset;
+    try (ParquetFileReader pfr =
+        ParquetFileReader.open(new BdecParquetReader.BdecInputFile(bytes))) {
+      pageOffset = pfr.getFooter().getBlocks().get(0).getColumns().get(0).getFirstDataPageOffset();
+    }
+    ByteArrayInputStream headerIn =
+        new ByteArrayInputStream(bytes, (int) pageOffset, bytes.length - (int) pageOffset);
+    PageHeader pageHeader = Util.readPageHeader(headerIn);
+    int headerSize = (bytes.length - (int) pageOffset) - headerIn.available();
+    int bodyStart = (int) pageOffset + headerSize;
+    int bodyEnd = bodyStart + pageHeader.compressed_page_size;
+    Assert.assertTrue(
+        "midpoint must land in the GZIP page, not the footer",
+        midpoint >= bodyStart && midpoint + 1 < bodyEnd);
+    // Iceberg v2 can still decode after a two-byte flip; smash a short window.
+    int corruptUntil = Math.min(midpoint + 16, bodyEnd);
+    for (int i = midpoint; i < corruptUntil; i++) {
+      bytes[i] ^= 0xFF;
+    }
     ByteArrayOutputStream corrupted = new ByteArrayOutputStream();
     corrupted.write(bytes);
 

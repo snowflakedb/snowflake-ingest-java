@@ -18,6 +18,7 @@ import org.apache.parquet.hadoop.api.InitContext;
 import org.apache.parquet.hadoop.api.ReadSupport;
 import org.apache.parquet.io.DelegatingSeekableInputStream;
 import org.apache.parquet.io.InputFile;
+import org.apache.parquet.io.ParquetDecodingException;
 import org.apache.parquet.io.SeekableInputStream;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.Converter;
@@ -82,16 +83,22 @@ public class BdecParquetReader implements AutoCloseable {
    * Catches compressed-data corruption (e.g. GZIP CRC32 failures) and row count mismatches.
    */
   public static void verify(byte[] data, long expectedRowCount) throws IOException {
-    long actualRowCount = 0;
-    try (BdecParquetReader reader = new BdecParquetReader(data)) {
-      while (reader.read() != null) {
-        actualRowCount++;
+    try {
+      long actualRowCount = 0;
+      try (BdecParquetReader reader = new BdecParquetReader(data)) {
+        while (reader.read() != null) {
+          actualRowCount++;
+        }
       }
-    }
-    if (actualRowCount != expectedRowCount) {
-      throw new IOException(
-          String.format(
-              "Row count mismatch: expected %d, got %d", expectedRowCount, actualRowCount));
+      if (actualRowCount != expectedRowCount) {
+        throw new IOException(
+            String.format(
+                "Row count mismatch: expected %d, got %d", expectedRowCount, actualRowCount));
+      }
+    } catch (ParquetDecodingException e) {
+      // Page/GZIP decode failures are unchecked; treat them like other I/O errors so
+      // verifyReadBack can wrap SFException and retry.
+      throw new IOException(e);
     }
   }
 
