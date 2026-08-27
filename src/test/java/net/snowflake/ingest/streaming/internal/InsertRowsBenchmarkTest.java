@@ -92,16 +92,8 @@ public class InsertRowsBenchmarkTest {
 
   @TearDown(Level.Trial)
   public void tearDownAfterAll() throws Exception {
-    // FlushService workers are non-daemon; skip client.close() and the JMH fork never exits.
-    try {
-      if (channel != null) {
-        channel.close();
-      }
-    } finally {
-      if (client != null) {
-        client.close();
-      }
-    }
+    channel.close();
+    client.close();
   }
 
   @Benchmark
