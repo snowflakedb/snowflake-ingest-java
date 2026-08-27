@@ -2,8 +2,7 @@
  * Replicated from snowflake-jdbc (v3.25.1)
  * Source: https://github.com/snowflakedb/snowflake-jdbc/blob/v3.25.1/src/main/java/net/snowflake/client/jdbc/telemetryOOB/TelemetryThreadPool.java
  *
- * Permitted differences: package; daemon thread factory from JDBC 3.26.0
- * (SNOW-2226852 / snowflake-jdbc#2297) so idle uploaders do not pin JVM exit.
+ * Permitted differences: package.
  */
 package net.snowflake.ingest.streaming.internal.fileTransferAgent;
 
