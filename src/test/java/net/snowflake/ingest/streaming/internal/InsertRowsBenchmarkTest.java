@@ -87,6 +87,9 @@ public class InsertRowsBenchmarkTest {
     col.setScale(0);
 
     channel.setupSchema(Collections.singletonList(col));
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    ChannelCache rawCache = client.getChannelCache();
+    rawCache.addChannel(channel);
     assert Utils.getProvider() != null;
   }
 
