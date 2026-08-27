@@ -135,14 +135,4 @@
       </plugin>
     </plugins>
   </build>
-
-  <!-- Relocated parquet types exist only in the shaded SDK jar. -->
-  <profiles>
-    <profile>
-      <id>shaded-internal-tests</id>
-      <modules>
-        <module>shaded-internal</module>
-      </modules>
-    </profile>
-  </profiles>
 </project>

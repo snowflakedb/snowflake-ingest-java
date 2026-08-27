@@ -28,6 +28,7 @@ import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClientFactory;
+import net.snowflake.ingest.utils.ParameterProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -107,6 +108,9 @@ public class IngestTestUtils {
       Map.Entry<String, JsonNode> prop = propIt.next();
       props.put(prop.getKey(), prop.getValue().asText());
     }
+    // Same path the unit tests cover in RowBufferTest, but against whatever jar e2e installed
+    // (shaded, unshaded, or fips). Catches relocated Hadoop types missing from the fat jar.
+    props.put(ParameterProvider.ENABLE_PARQUET_READBACK_VERIFICATION, "true");
     return props;
   }
 

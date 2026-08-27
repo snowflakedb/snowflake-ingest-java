@@ -40,8 +40,7 @@ if [[ "${test_type}" == "shaded" ]]; then
   cd e2e-jar-test
 
   echo "Testing shaded JAR with ${java_path_for_test_execution}"
-  # shaded-internal compiles RowBuffer readback copies against relocated parquet types.
-  JAVA_HOME="${java_path_for_test_execution}" mvn --show-version clean verify -Pshaded-internal-tests -pl standard,shaded-internal -am
+  JAVA_HOME="${java_path_for_test_execution}" mvn --show-version clean verify -pl standard -am
   cd ..
 elif [[ "${test_type}" == "unshaded" ]]; then
   echo "#####################"
