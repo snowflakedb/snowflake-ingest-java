@@ -108,8 +108,6 @@ public class IngestTestUtils {
       Map.Entry<String, JsonNode> prop = propIt.next();
       props.put(prop.getKey(), prop.getValue().asText());
     }
-    // Same path the unit tests cover in RowBufferTest, but against whatever jar e2e installed
-    // (shaded, unshaded, or fips). Catches relocated Hadoop types missing from the fat jar.
     props.put(ParameterProvider.ENABLE_PARQUET_READBACK_VERIFICATION, "true");
     return props;
   }
