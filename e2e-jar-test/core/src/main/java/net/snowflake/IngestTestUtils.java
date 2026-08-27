@@ -58,15 +58,6 @@ public class IngestTestUtils {
           ClassNotFoundException,
           NoSuchAlgorithmException,
           InvalidKeySpecException {
-    this(testName, false);
-  }
-
-  public IngestTestUtils(String testName, boolean enableParquetReadbackVerification)
-      throws SQLException,
-          IOException,
-          ClassNotFoundException,
-          NoSuchAlgorithmException,
-          InvalidKeySpecException {
     testId = String.format("%s_%s", testName, UUID.randomUUID().toString().replace("-", "_"));
     connection = getConnection();
     database = String.format("ingest_sdk_e2e_jar_database_%s", testId);
@@ -95,13 +86,9 @@ public class IngestTestUtils {
                     + ");",
                 table));
     Properties props = loadProperties();
-    props.put(
-        ParameterProvider.ENABLE_PARQUET_READBACK_VERIFICATION,
-        String.valueOf(enableParquetReadbackVerification));
+    props.put(ParameterProvider.ENABLE_PARQUET_READBACK_VERIFICATION, "true");
     client =
-        SnowflakeStreamingIngestClientFactory.builder("TestClient01")
-            .setProperties(props)
-            .build();
+        SnowflakeStreamingIngestClientFactory.builder("TestClient01").setProperties(props).build();
 
     channel =
         client.openChannel(
