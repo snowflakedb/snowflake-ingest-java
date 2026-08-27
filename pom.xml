@@ -1376,8 +1376,6 @@
         <configuration>
           <excludes>
             <exclude>**/TestSimpleIngestLocal.java</exclude>
-            <!-- JMH forks write the same jacoco-ut.exec and break report generation in CI. -->
-            <exclude>**/*BenchmarkTest.java</exclude>
           </excludes>
         </configuration>
       </plugin>

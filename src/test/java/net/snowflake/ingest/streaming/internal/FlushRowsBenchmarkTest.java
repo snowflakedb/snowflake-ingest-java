@@ -18,6 +18,7 @@ import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.Utils;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.parquet.column.ParquetProperties;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Level;
@@ -33,6 +34,7 @@ import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
 import org.openjdk.jmh.runner.options.TimeValue;
 
+@Ignore("Manual readback on/off comparison; do not run in default CI.")
 @State(Scope.Thread)
 public class FlushRowsBenchmarkTest {
   @Param({"false", "true"})
