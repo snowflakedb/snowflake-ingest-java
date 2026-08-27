@@ -2667,18 +2667,90 @@ public class RowBufferTest {
             0,
             FileMetadataTestingOverrides.none());
 
-    // Corrupt bytes in the middle of the compressed data region to simulate VM-level
-    // GZip compression corruption (reproduces FDC case 01415855 / SNOW-3837078)
+    // Midpoint on this 1-row blob is in the footer. Two-byte XOR is version-dependent
+    // (4.4.4 vs 4.4.4-SNAPSHOT slides the hit onto a neighboring thrift field); 16 bytes
+    // makes footer parse fail either way.
     byte[] bytes = result.chunkData.toByteArray();
     int midpoint = bytes.length / 2;
-    bytes[midpoint] ^= 0xFF;
-    bytes[midpoint + 1] ^= 0xFF;
+    int corruptUntil = Math.min(midpoint + 16, bytes.length);
+    for (int i = midpoint; i < corruptUntil; i++) {
+      bytes[i] ^= 0xFF;
+    }
     ByteArrayOutputStream corrupted = new ByteArrayOutputStream();
     corrupted.write(bytes);
 
     try {
       flusher.verifyReadBack(corrupted, data.getRowCount());
       Assert.fail("Expected SFException for corrupt parquet data");
+    } catch (SFException e) {
+      Assert.assertNotNull(e.getMessage());
+    }
+  }
+
+  @Test
+  public void testParquetReadBackVerificationCatchesPageBodyCorruption() throws IOException {
+    ParquetRowBuffer buffer =
+        (ParquetRowBuffer) createTestBuffer(OpenChannelRequest.OnErrorOption.CONTINUE);
+    ColumnMetadata col = new ColumnMetadata();
+    col.setOrdinal(1);
+    col.setName("C1");
+    col.setPhysicalType("LOB");
+    col.setNullable(true);
+    col.setLogicalType("TEXT");
+    col.setByteLength(256);
+    col.setLength(256);
+    col.setScale(0);
+    buffer.setupSchema(Collections.singletonList(col));
+    String sentence = "The quick brown fox jumps over the lazy dog. ";
+    List<Map<String, Object>> rows = new ArrayList<>();
+    for (int i = 0; i < 32; i++) {
+      rows.add(
+          Collections.singletonMap(
+              "C1",
+              sentence
+                  + java.util.UUID.nameUUIDFromBytes(
+                      ("bdec-corruption-row-" + i).getBytes(StandardCharsets.UTF_8))));
+    }
+    Assert.assertFalse(buffer.insertRows(rows, "1", "32").hasErrors());
+
+    ChannelData<ParquetChunkData> data = buffer.flush();
+    data.setChannelContext(new ChannelFlushContext("name", "db", "schema", "table", 1L, "key", 0L));
+
+    ParquetFlusher flusher = (ParquetFlusher) buffer.createFlusher();
+    Flusher.SerializationResult result =
+        flusher.serialize(
+            Collections.singletonList(data),
+            "corruption_page_body_test.bdec",
+            0,
+            FileMetadataTestingOverrides.none());
+
+    byte[] bytes = result.chunkData.toByteArray();
+    int midpoint = bytes.length / 2;
+    long pageOffset;
+    try (ParquetFileReader pfr =
+        ParquetFileReader.open(new BdecParquetReader.BdecInputFile(bytes))) {
+      pageOffset = pfr.getFooter().getBlocks().get(0).getColumns().get(0).getFirstDataPageOffset();
+    }
+    ByteArrayInputStream headerIn =
+        new ByteArrayInputStream(bytes, (int) pageOffset, bytes.length - (int) pageOffset);
+    PageHeader pageHeader = Util.readPageHeader(headerIn);
+    int headerSize = (bytes.length - (int) pageOffset) - headerIn.available();
+    int bodyStart = (int) pageOffset + headerSize;
+    int bodyEnd = bodyStart + pageHeader.compressed_page_size;
+    Assert.assertTrue(
+        "midpoint must land in the GZIP page, not the footer",
+        midpoint >= bodyStart && midpoint + 1 < bodyEnd);
+    // Iceberg v2 can still decode after a two-byte flip; smash a short window.
+    int corruptUntil = Math.min(midpoint + 16, bodyEnd);
+    for (int i = midpoint; i < corruptUntil; i++) {
+      bytes[i] ^= 0xFF;
+    }
+    ByteArrayOutputStream corrupted = new ByteArrayOutputStream();
+    corrupted.write(bytes);
+
+    try {
+      flusher.verifyReadBack(corrupted, data.getRowCount());
+      Assert.fail("Expected SFException for corrupt parquet page body");
     } catch (SFException e) {
       Assert.assertNotNull(e.getMessage());
     }

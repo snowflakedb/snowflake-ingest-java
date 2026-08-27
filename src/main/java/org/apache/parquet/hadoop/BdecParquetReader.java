@@ -87,6 +87,9 @@ public class BdecParquetReader implements AutoCloseable {
       while (reader.read() != null) {
         actualRowCount++;
       }
+    } catch (RuntimeException e) {
+      // Unchecked parquet failures (decode, gzip, thrift, ...) must become IOException for retries.
+      throw new IOException(e);
     }
     if (actualRowCount != expectedRowCount) {
       throw new IOException(
