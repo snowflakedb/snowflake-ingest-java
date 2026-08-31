@@ -2,6 +2,7 @@
 package net.snowflake.ingest.streaming.internal.fileTransferAgent;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 import java.lang.reflect.Field;
 import java.util.Collections;
@@ -10,6 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.Test;
 
 public class TelemetryThreadPoolTest {
@@ -72,6 +74,23 @@ public class TelemetryThreadPoolTest {
     }
     assertEquals(
         "The thread pool should have scaled down to 0 idle threads.", 0, executor.getPoolSize());
+  }
+
+  @Test
+  public void testTelemetryThreadsAreDaemonThreads() throws InterruptedException {
+    TelemetryThreadPool telemetryPool = TelemetryThreadPool.getInstance();
+    final AtomicBoolean isDaemonThread = new AtomicBoolean(false);
+    final CountDownLatch latch = new CountDownLatch(1);
+
+    telemetryPool.execute(
+        () -> {
+          isDaemonThread.set(Thread.currentThread().isDaemon());
+          latch.countDown();
+        });
+
+    latch.await(1, TimeUnit.SECONDS);
+
+    assertTrue("TelemetryThreadPool threads should be daemon threads", isDaemonThread.get());
   }
 
   private ThreadPoolExecutor getThreadPoolExecutor(TelemetryThreadPool telemetryThreadPool) {
