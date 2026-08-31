@@ -8,8 +8,10 @@ package net.snowflake.ingest.streaming.internal.fileTransferAgent;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
@@ -45,14 +47,23 @@ public class TelemetryThreadPool {
    * allowing the pool to shrink back to zero during periods of inactivity.
    */
   private TelemetryThreadPool() {
+    // Daemon so client.close() → telemetry.flush does not pin the process for keepAliveTime.
+    ThreadFactory daemonThreadFactory =
+        r -> {
+          Thread thread = Executors.defaultThreadFactory().newThread(r);
+          thread.setName("telemetry-uploader-" + thread.getId());
+          thread.setDaemon(true);
+          return thread;
+        };
+
     uploader =
         new ThreadPoolExecutor(
             CORE_POOL_SIZE, // core size
             CORE_POOL_SIZE, // max size
             30L, // keep alive time
             TimeUnit.SECONDS,
-            new LinkedBlockingQueue<>() // work queue
-            );
+            new LinkedBlockingQueue<>(), // work queue
+            daemonThreadFactory);
     // Allow core threads to time out and be terminated when idle.
     ((ThreadPoolExecutor) uploader).allowCoreThreadTimeOut(true);
   }
