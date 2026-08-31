@@ -28,6 +28,7 @@ import net.snowflake.ingest.streaming.OpenChannelRequest;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestChannel;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClient;
 import net.snowflake.ingest.streaming.SnowflakeStreamingIngestClientFactory;
+import net.snowflake.ingest.utils.ParameterProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -84,10 +85,10 @@ public class IngestTestUtils {
                     + "timestamp_tz_col timestamp_tz"
                     + ");",
                 table));
+    Properties props = loadProperties();
+    props.put(ParameterProvider.ENABLE_PARQUET_READBACK_VERIFICATION, "true");
     client =
-        SnowflakeStreamingIngestClientFactory.builder("TestClient01")
-            .setProperties(loadProperties())
-            .build();
+        SnowflakeStreamingIngestClientFactory.builder("TestClient01").setProperties(props).build();
 
     channel =
         client.openChannel(

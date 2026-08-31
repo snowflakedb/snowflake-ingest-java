@@ -1747,6 +1747,7 @@
                   <artifact>org.apache.hadoop:hadoop-mapreduce-client-core</artifact>
                   <includes>
                     <include>org/apache/hadoop/mapreduce/*.class</include>
+                    <include>org/apache/hadoop/mapreduce/lib/input/*.class</include>
                   </includes>
                 </filter>
                 <filter>
