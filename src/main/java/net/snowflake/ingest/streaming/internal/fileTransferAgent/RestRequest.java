@@ -714,6 +714,12 @@ public class RestRequest {
               responseDto.getHttpResponse(),
               responseDto.getSavedEx());
         }
+        // A failed request is never handed to the caller, so return its connection to the pool
+        // here. A 200 response stays leased because the caller still reads its body.
+        if (responseDto.getHttpResponse() == null
+            || responseDto.getHttpResponse().getStatusLine().getStatusCode() != 200) {
+          httpRequest.releaseConnection();
+        }
         break;
       } else {
         prepareRetry(httpRequest, httpExecutingContext, retryManager, responseDto);
