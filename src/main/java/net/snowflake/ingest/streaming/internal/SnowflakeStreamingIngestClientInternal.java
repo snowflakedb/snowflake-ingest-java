@@ -64,6 +64,7 @@ import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.HttpUtil;
 import net.snowflake.ingest.utils.Logging;
+import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.SFSessionProperty;
@@ -745,13 +746,75 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
           blobs,
           queueFullChunks,
           executionCount);
-      List<BlobMetadata> retryBlobs = this.getRetryBlobs(queueFullChunks, response, blobs);
+      List<BlobMetadata> retryBlobs =
+          parameterProvider.isEnableExactChunkRetry()
+              ? this.getRetryBlobs(queueFullChunks, response, blobs)
+              : this.getRetryBlobs(queueFullChunks, blobs);
       if (retryBlobs.isEmpty()) {
         throw new SFException(ErrorCode.INTERNAL_ERROR, "Failed to retry queue full chunks");
       }
       sleepForRetry(executionCount);
       this.registerBlobs(retryBlobs, executionCount + 1);
     }
+  }
+
+  /**
+   * Constructs a new register blobs payload consisting of chunks that were rejected by a prior
+   * registration attempt
+   *
+   * @param queueFullChunks ChunkRegisterStatus values for the chunks that had been rejected
+   * @param blobs List<BlobMetadata> from the prior registration call
+   * @return a new List<BlobMetadata> for only chunks matching queueFullChunks
+   */
+  List<BlobMetadata> getRetryBlobs(
+      Set<ChunkRegisterStatus> queueFullChunks, List<BlobMetadata> blobs) {
+    /*
+    If a channel returns a RESPONSE_ERR_ENQUEUE_TABLE_CHUNK_QUEUE_FULL statusCode then all channels in the same chunk
+    will have that statusCode.  Here we collect all channels with RESPONSE_ERR_ENQUEUE_TABLE_CHUNK_QUEUE_FULL and use
+    them to pull out the chunks to retry from blobs
+     */
+    Set<Pair<String, Long>> queueFullKeys =
+        queueFullChunks.stream()
+            .flatMap(
+                chunkRegisterStatus -> {
+                  return chunkRegisterStatus.getChannelsStatus().stream()
+                      .map(
+                          channelStatus ->
+                              new Pair<String, Long>(
+                                  channelStatus.getChannelName(),
+                                  channelStatus.getChannelSequencer()));
+                })
+            .collect(Collectors.toSet());
+    List<BlobMetadata> retryBlobs = new ArrayList<>();
+    blobs.forEach(
+        blobMetadata -> {
+          List<ChunkMetadata> relevantChunks =
+              blobMetadata.getChunks().stream()
+                  .filter(
+                      chunkMetadata ->
+                          chunkMetadata.getChannels().stream()
+                              .map(
+                                  channelMetadata ->
+                                      new Pair<>(
+                                          channelMetadata.getChannelName(),
+                                          channelMetadata.getClientSequencer()))
+                              .anyMatch(queueFullKeys::contains))
+                  .collect(Collectors.toList());
+          if (!relevantChunks.isEmpty()) {
+            retryBlobs.add(
+                BlobMetadata.createBlobMetadata(
+                    blobMetadata.getPath(),
+                    blobMetadata.getMD5(),
+                    blobMetadata.getVersion(),
+                    relevantChunks,
+                    blobMetadata.getBlobStats(),
+                    // Important to not change the spansMixedTables value in case of retries. The
+                    // correct value is the value that the already uploaded blob has.
+                    blobMetadata.getSpansMixedTables()));
+          }
+        });
+
+    return retryBlobs;
   }
 
   /**

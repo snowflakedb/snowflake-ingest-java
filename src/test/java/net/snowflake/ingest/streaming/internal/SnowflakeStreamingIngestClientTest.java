@@ -106,6 +106,10 @@ public class SnowflakeStreamingIngestClientTest {
 
   @Before
   public void setup() throws Exception {
+    setup(null, null);
+  }
+
+  private void setup(String retryProperty, Boolean retryOverride) throws Exception {
     objectMapper.setVisibility(PropertyAccessor.GETTER, JsonAutoDetect.Visibility.ANY);
     objectMapper.setVisibility(PropertyAccessor.SETTER, JsonAutoDetect.Visibility.ANY);
     Properties prop = new Properties();
@@ -116,6 +120,15 @@ public class SnowflakeStreamingIngestClientTest {
     enableIcebergStreamingProp = new Properties();
     enableIcebergStreamingProp.setProperty(
         ParameterProvider.ENABLE_ICEBERG_STREAMING, String.valueOf(enableIcebergStreaming));
+
+    if (retryProperty != null) {
+      enableIcebergStreamingProp.setProperty(
+          ParameterProvider.ENABLE_EXACT_CHUNK_RETRY, retryProperty);
+    }
+    Map<String, Object> parameterOverrides = new HashMap<>();
+    if (retryOverride != null) {
+      parameterOverrides.put(ParameterProvider.ENABLE_EXACT_CHUNK_RETRY, retryOverride);
+    }
 
     apiOverride = new MockSnowflakeServiceClient.ApiOverride();
     CloseableHttpClient httpClient = MockSnowflakeServiceClient.createHttpClient(apiOverride);
@@ -130,7 +143,7 @@ public class SnowflakeStreamingIngestClientTest {
             httpClient,
             true,
             requestBuilder,
-            new HashMap<>());
+            parameterOverrides);
 
     channel1 =
         new SnowflakeStreamingIngestChannelInternal<>(
@@ -740,6 +753,31 @@ public class SnowflakeStreamingIngestClientTest {
 
   @Test
   public void testRegistrationRetryOmitsSuccessfulChunkWithSameChannelIdentity() throws Exception {
+    assertRegistrationRetryChunkSelection(true);
+  }
+
+  @Test
+  public void testRegistrationRetryEnabledOverrideUsesExactChunks() throws Exception {
+    clientInternal.close(false);
+    setup("false", true);
+    assertRegistrationRetryChunkSelection(true);
+  }
+
+  @Test
+  public void testRegistrationRetryDisabledPropertyUsesLegacyMatching() throws Exception {
+    clientInternal.close(false);
+    setup("false", null);
+    assertRegistrationRetryChunkSelection(false);
+  }
+
+  @Test
+  public void testRegistrationRetryDisabledOverrideUsesLegacyMatching() throws Exception {
+    clientInternal.close(false);
+    setup("true", false);
+    assertRegistrationRetryChunkSelection(false);
+  }
+
+  private void assertRegistrationRetryChunkSelection(boolean exactChunkRetry) throws Exception {
     Pair<List<BlobMetadata>, Set<ChunkRegisterStatus>> fixture = getRetryBlobMetadata();
     List<BlobMetadata> blobs = fixture.getLeft();
     ChunkMetadata failed = blobs.get(0).getChunks().get(0);
@@ -779,7 +817,7 @@ public class SnowflakeStreamingIngestClientTest {
             blobs.get(0).getPath(),
             blobs.get(0).getMD5(),
             blobs.get(0).getVersion(),
-            Collections.singletonList(failed),
+            exactChunkRetry ? Collections.singletonList(failed) : blobs.get(0).getChunks(),
             blobs.get(0).getBlobStats(),
             blobs.get(0).getSpansMixedTables());
     ArrayDeque<String> responses = new ArrayDeque<>();
@@ -808,7 +846,10 @@ public class SnowflakeStreamingIngestClientTest {
     JsonNode originalBlob = requests.get(0).get("blobs").get(0);
     JsonNode retriedBlobs = requests.get(1).get("blobs");
     Assert.assertEquals(1, retriedBlobs.size());
-    Assert.assertEquals(1, retriedBlobs.get(0).get("chunks").size());
+    Assert.assertEquals(exactChunkRetry ? 1 : 2, retriedBlobs.get(0).get("chunks").size());
+    if (!exactChunkRetry) {
+      Assert.assertEquals(originalBlob.get("chunks"), retriedBlobs.get(0).get("chunks"));
+    }
     Assert.assertEquals(
         originalBlob.get("chunks").get(0), retriedBlobs.get(0).get("chunks").get(0));
     Assert.assertEquals(originalBlob.get("path"), retriedBlobs.get(0).get("path"));
