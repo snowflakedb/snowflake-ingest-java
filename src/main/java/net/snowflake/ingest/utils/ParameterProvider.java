@@ -47,6 +47,8 @@ public class ParameterProvider {
   public static final String ENABLE_NEW_JSON_PARSING_LOGIC =
       "ENABLE_NEW_JSON_PARSING_LOGIC".toLowerCase();
 
+  public static final String ENABLE_EXACT_CHUNK_RETRY = "ENABLE_EXACT_CHUNK_RETRY".toLowerCase();
+
   public static final String ENABLE_ICEBERG_STREAMING = "ENABLE_ICEBERG_STREAMING".toLowerCase();
 
   public static final String MAX_CHANNEL_WRITE_RETRY_COUNT_ON_QUEUE_FULL =
@@ -97,6 +99,8 @@ public class ParameterProvider {
   public static final boolean ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT = true;
 
   public static final boolean ENABLE_PARQUET_READBACK_VERIFICATION_DEFAULT = false;
+
+  public static final boolean ENABLE_EXACT_CHUNK_RETRY_DEFAULT = true;
 
   public static final boolean ENABLE_ICEBERG_STREAMING_DEFAULT = false;
 
@@ -280,6 +284,13 @@ public class ParameterProvider {
     this.checkAndUpdate(
         ENABLE_NEW_JSON_PARSING_LOGIC,
         ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT,
+        parameterOverrides,
+        props,
+        false /* enforceDefault */);
+
+    this.checkAndUpdate(
+        ENABLE_EXACT_CHUNK_RETRY,
+        ENABLE_EXACT_CHUNK_RETRY_DEFAULT,
         parameterOverrides,
         props,
         false /* enforceDefault */);
@@ -600,6 +611,16 @@ public class ParameterProvider {
     Object val =
         this.parameterMap.getOrDefault(
             ENABLE_NEW_JSON_PARSING_LOGIC, ENABLE_NEW_JSON_PARSING_LOGIC_DEFAULT);
+    return (val instanceof String) ? Boolean.parseBoolean(val.toString()) : (boolean) val;
+  }
+
+  /**
+   * Whether registration retries select exact original chunks. Set to false before creating the
+   * client to restore legacy channel-identity matching.
+   */
+  public boolean isEnableExactChunkRetry() {
+    Object val =
+        this.parameterMap.getOrDefault(ENABLE_EXACT_CHUNK_RETRY, ENABLE_EXACT_CHUNK_RETRY_DEFAULT);
     return (val instanceof String) ? Boolean.parseBoolean(val.toString()) : (boolean) val;
   }
 
