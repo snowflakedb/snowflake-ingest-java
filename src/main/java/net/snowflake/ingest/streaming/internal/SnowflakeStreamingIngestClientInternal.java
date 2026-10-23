@@ -64,7 +64,6 @@ import net.snowflake.ingest.utils.Constants;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.HttpUtil;
 import net.snowflake.ingest.utils.Logging;
-import net.snowflake.ingest.utils.Pair;
 import net.snowflake.ingest.utils.ParameterProvider;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.SFSessionProperty;
@@ -746,7 +745,7 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
           blobs,
           queueFullChunks,
           executionCount);
-      List<BlobMetadata> retryBlobs = this.getRetryBlobs(queueFullChunks, blobs);
+      List<BlobMetadata> retryBlobs = this.getRetryBlobs(queueFullChunks, response, blobs);
       if (retryBlobs.isEmpty()) {
         throw new SFException(ErrorCode.INTERNAL_ERROR, "Failed to retry queue full chunks");
       }
@@ -756,61 +755,63 @@ public class SnowflakeStreamingIngestClientInternal<T> implements SnowflakeStrea
   }
 
   /**
-   * Constructs a new register blobs payload consisting of chunks that were rejected by a prior
-   * registration attempt
+   * Constructs a new registration payload containing only the original chunks selected for retry.
    *
-   * @param queueFullChunks ChunkRegisterStatus values for the chunks that had been rejected
-   * @param blobs List<BlobMetadata> from the prior registration call
-   * @return a new List<BlobMetadata> for only chunks matching queueFullChunks
+   * @param retryableChunks response chunks that have not exhausted their retry limit
+   * @param response registration response in the original request's blob and chunk order
+   * @param blobs blobs from the original registration call
+   * @return blobs containing the exact original chunks selected for retry
    */
   List<BlobMetadata> getRetryBlobs(
-      Set<ChunkRegisterStatus> queueFullChunks, List<BlobMetadata> blobs) {
-    /*
-    If a channel returns a RESPONSE_ERR_ENQUEUE_TABLE_CHUNK_QUEUE_FULL statusCode then all channels in the same chunk
-    will have that statusCode.  Here we collect all channels with RESPONSE_ERR_ENQUEUE_TABLE_CHUNK_QUEUE_FULL and use
-    them to pull out the chunks to retry from blobs
-     */
-    Set<Pair<String, Long>> queueFullKeys =
-        queueFullChunks.stream()
-            .flatMap(
-                chunkRegisterStatus -> {
-                  return chunkRegisterStatus.getChannelsStatus().stream()
-                      .map(
-                          channelStatus ->
-                              new Pair<String, Long>(
-                                  channelStatus.getChannelName(),
-                                  channelStatus.getChannelSequencer()));
-                })
-            .collect(Collectors.toSet());
+      Set<ChunkRegisterStatus> retryableChunks,
+      RegisterBlobResponse response,
+      List<BlobMetadata> blobs) {
+    if (response.getBlobsStatus().size() != blobs.size()) {
+      throw new SFException(ErrorCode.INTERNAL_ERROR, "Registration response blob count mismatch");
+    }
     List<BlobMetadata> retryBlobs = new ArrayList<>();
-    blobs.forEach(
-        blobMetadata -> {
-          List<ChunkMetadata> relevantChunks =
-              blobMetadata.getChunks().stream()
-                  .filter(
-                      chunkMetadata ->
-                          chunkMetadata.getChannels().stream()
-                              .map(
-                                  channelMetadata ->
-                                      new Pair<>(
-                                          channelMetadata.getChannelName(),
-                                          channelMetadata.getClientSequencer()))
-                              .anyMatch(queueFullKeys::contains))
-                  .collect(Collectors.toList());
-          if (!relevantChunks.isEmpty()) {
-            retryBlobs.add(
-                BlobMetadata.createBlobMetadata(
-                    blobMetadata.getPath(),
-                    blobMetadata.getMD5(),
-                    blobMetadata.getVersion(),
-                    relevantChunks,
-                    blobMetadata.getBlobStats(),
-                    // Important to not change the spansMixedTables value in case of retries. The
-                    // correct value is the value that the already uploaded blob has.
-                    blobMetadata.getSpansMixedTables()));
-          }
-        });
-
+    for (int blobIndex = 0; blobIndex < blobs.size(); blobIndex++) {
+      BlobMetadata blob = blobs.get(blobIndex);
+      List<ChunkRegisterStatus> statuses =
+          response.getBlobsStatus().get(blobIndex).getChunksStatus();
+      if (statuses.size() != blob.getChunks().size()) {
+        throw new SFException(
+            ErrorCode.INTERNAL_ERROR, "Registration response chunk count mismatch");
+      }
+      List<ChunkMetadata> retryChunks = new ArrayList<>();
+      for (int chunkIndex = 0; chunkIndex < statuses.size(); chunkIndex++) {
+        ChunkRegisterStatus status = statuses.get(chunkIndex);
+        ChunkMetadata chunk = blob.getChunks().get(chunkIndex);
+        FullyQualifiedTableName expectedTable =
+            new FullyQualifiedTableName(
+                chunk.getDBName(), chunk.getSchemaName(), chunk.getTableName());
+        FullyQualifiedTableName returnedTable =
+            new FullyQualifiedTableName(
+                status.getDBName(), status.getSchemaName(), status.getTableName());
+        if (!expectedTable.equals(returnedTable)
+            || status.getChannelsStatus().size() != chunk.getChannels().size()) {
+          throw new SFException(
+              ErrorCode.INTERNAL_ERROR, "Registration response chunk identity mismatch");
+        }
+        // The response arrays correspond to the original request arrays. Channel names and
+        // sequencers may be shared across tables or blobs, so they cannot identify a failed chunk.
+        // Use the already-classified statuses to preserve the independent retry limits.
+        if (retryableChunks.contains(status)) {
+          retryChunks.add(chunk);
+        }
+      }
+      if (!retryChunks.isEmpty()) {
+        retryBlobs.add(
+            BlobMetadata.createBlobMetadata(
+                blob.getPath(),
+                blob.getMD5(),
+                blob.getVersion(),
+                retryChunks,
+                blob.getBlobStats(),
+                // Retain the uploaded blob's mixed-table flag even when its retry has one chunk.
+                blob.getSpansMixedTables()));
+      }
+    }
     return retryBlobs;
   }
 
