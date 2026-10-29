@@ -692,6 +692,9 @@ public class RestRequest {
                 httpExecutingContext.getRequestId(),
                 httpExecutingContext.getRequestInfoScrubbed());
           }
+          // A failed request is never handed to the caller, so return its connection to the
+          // pool here. A 200 response stays leased because the caller still reads its body.
+          httpRequest.releaseConnection();
         } else if (responseDto.getHttpResponse().getStatusLine().getStatusCode() != 200) {
           logger.error(
               "{}Error response: HTTP Response code: {}, request: {}",
@@ -706,6 +709,7 @@ public class RestRequest {
                       + ((responseDto.getHttpResponse() != null)
                           ? responseDto.getHttpResponse().getStatusLine().getStatusCode()
                           : "null response")));
+          httpRequest.releaseConnection();
         } else if ((responseDto.getHttpResponse() == null
             || responseDto.getHttpResponse().getStatusLine().getStatusCode() != 200)) {
           sendTelemetryEvent(
