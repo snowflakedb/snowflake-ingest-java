@@ -21,10 +21,12 @@ import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Sets;
 import java.io.IOException;
 import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.time.ZoneOffset;
@@ -104,6 +106,10 @@ public class SnowflakeStreamingIngestClientTest {
 
   @Before
   public void setup() throws Exception {
+    setup(null, null);
+  }
+
+  private void setup(String retryProperty, Boolean retryOverride) throws Exception {
     objectMapper.setVisibility(PropertyAccessor.GETTER, JsonAutoDetect.Visibility.ANY);
     objectMapper.setVisibility(PropertyAccessor.SETTER, JsonAutoDetect.Visibility.ANY);
     Properties prop = new Properties();
@@ -114,6 +120,15 @@ public class SnowflakeStreamingIngestClientTest {
     enableIcebergStreamingProp = new Properties();
     enableIcebergStreamingProp.setProperty(
         ParameterProvider.ENABLE_ICEBERG_STREAMING, String.valueOf(enableIcebergStreaming));
+
+    if (retryProperty != null) {
+      enableIcebergStreamingProp.setProperty(
+          ParameterProvider.ENABLE_EXACT_CHUNK_RETRY, retryProperty);
+    }
+    Map<String, Object> parameterOverrides = new HashMap<>();
+    if (retryOverride != null) {
+      parameterOverrides.put(ParameterProvider.ENABLE_EXACT_CHUNK_RETRY, retryOverride);
+    }
 
     apiOverride = new MockSnowflakeServiceClient.ApiOverride();
     CloseableHttpClient httpClient = MockSnowflakeServiceClient.createHttpClient(apiOverride);
@@ -128,7 +143,7 @@ public class SnowflakeStreamingIngestClientTest {
             httpClient,
             true,
             requestBuilder,
-            new HashMap<>());
+            parameterOverrides);
 
     channel1 =
         new SnowflakeStreamingIngestChannelInternal<>(
@@ -688,7 +703,9 @@ public class SnowflakeStreamingIngestClientTest {
     Pair<List<BlobMetadata>, Set<ChunkRegisterStatus>> testData = getRetryBlobMetadata();
     List<BlobMetadata> blobs = testData.getLeft();
     Set<ChunkRegisterStatus> badChunks = testData.getRight();
-    List<BlobMetadata> result = clientInternal.getRetryBlobs(badChunks, blobs);
+    RegisterBlobResponse response = registrationResponse(blobs);
+    response.getBlobsStatus().get(0).getChunksStatus().set(0, badChunks.iterator().next());
+    List<BlobMetadata> result = clientInternal.getRetryBlobs(badChunks, response, blobs);
     Assert.assertEquals(1, result.size());
     Assert.assertEquals("path1", result.get(0).getPath());
     Assert.assertEquals("md51", result.get(0).getMD5());
@@ -700,6 +717,147 @@ public class SnowflakeStreamingIngestClientTest {
             .map(ChannelMetadata::getChannelName)
             .collect(Collectors.toSet()));
     Assert.assertEquals(ParameterProvider.BLOB_FORMAT_VERSION_DEFAULT, result.get(0).getVersion());
+  }
+
+  private RegisterBlobResponse registrationResponse(List<BlobMetadata> blobs) {
+    RegisterBlobResponse response = new RegisterBlobResponse();
+    response.setStatusCode(RESPONSE_SUCCESS);
+    response.setMessage("success");
+    response.setEncryptionKeys(Collections.emptyList());
+    List<BlobRegisterStatus> statuses = new ArrayList<>();
+    for (BlobMetadata blob : blobs) {
+      BlobRegisterStatus blobStatus = new BlobRegisterStatus();
+      List<ChunkRegisterStatus> chunks = new ArrayList<>();
+      for (ChunkMetadata chunk : blob.getChunks()) {
+        ChunkRegisterStatus status = new ChunkRegisterStatus();
+        status.setDBName(chunk.getDBName());
+        status.setSchemaName(chunk.getSchemaName());
+        status.setTableName(chunk.getTableName());
+        List<ChannelRegisterStatus> channels = new ArrayList<>();
+        for (ChannelMetadata metadata : chunk.getChannels()) {
+          ChannelRegisterStatus channel = new ChannelRegisterStatus();
+          channel.setChannelName(metadata.getChannelName());
+          channel.setChannelSequencer(metadata.getClientSequencer());
+          channel.setStatusCode(RESPONSE_SUCCESS);
+          channels.add(channel);
+        }
+        status.setChannelsStatus(channels);
+        chunks.add(status);
+      }
+      blobStatus.setChunksStatus(chunks);
+      statuses.add(blobStatus);
+    }
+    response.setBlobsStatus(statuses);
+    return response;
+  }
+
+  @Test
+  public void testRegistrationRetryOmitsSuccessfulChunkWithSameChannelIdentity() throws Exception {
+    assertRegistrationRetryChunkSelection(true);
+  }
+
+  @Test
+  public void testRegistrationRetryEnabledOverrideUsesExactChunks() throws Exception {
+    clientInternal.close(false);
+    setup("false", true);
+    assertRegistrationRetryChunkSelection(true);
+  }
+
+  @Test
+  public void testRegistrationRetryDisabledPropertyUsesLegacyMatching() throws Exception {
+    clientInternal.close(false);
+    setup("false", null);
+    assertRegistrationRetryChunkSelection(false);
+  }
+
+  @Test
+  public void testRegistrationRetryDisabledOverrideUsesLegacyMatching() throws Exception {
+    clientInternal.close(false);
+    setup("true", false);
+    assertRegistrationRetryChunkSelection(false);
+  }
+
+  private void assertRegistrationRetryChunkSelection(boolean exactChunkRetry) throws Exception {
+    Pair<List<BlobMetadata>, Set<ChunkRegisterStatus>> fixture = getRetryBlobMetadata();
+    List<BlobMetadata> blobs = fixture.getLeft();
+    ChunkMetadata failed = blobs.get(0).getChunks().get(0);
+    ChannelMetadata failedChannel = failed.getChannels().get(0);
+    ChannelFlushContext otherTable =
+        new ChannelFlushContext(
+            failedChannel.getChannelName(),
+            failed.getDBName(),
+            failed.getSchemaName(),
+            "other_table",
+            failedChannel.getClientSequencer(),
+            "key",
+            failed.getEncryptionKeyId());
+    ChunkMetadata successful =
+        ChunkMetadata.builder()
+            .setOwningTableFromChannelContext(otherTable)
+            .setChunkStartOffset(200L)
+            .setChunkLength(100)
+            .setChunkMD5("successful-md5")
+            .setEncryptionKeyId(failed.getEncryptionKeyId())
+            .setEpInfo(failed.getEpInfo())
+            .setFirstInsertTimeInMs(1L)
+            .setLastInsertTimeInMs(2L)
+            .setChannelList(
+                Collections.singletonList(
+                    ChannelMetadata.builder()
+                        .setOwningChannelFromContext(otherTable)
+                        .setRowSequencer(2L)
+                        .setOffsetToken("offset")
+                        .build()))
+            .build();
+    blobs.get(0).getChunks().set(1, successful);
+    RegisterBlobResponse initial = registrationResponse(blobs);
+    initial.getBlobsStatus().get(0).getChunksStatus().set(0, fixture.getRight().iterator().next());
+    BlobMetadata retryBlob =
+        BlobMetadata.createBlobMetadata(
+            blobs.get(0).getPath(),
+            blobs.get(0).getMD5(),
+            blobs.get(0).getVersion(),
+            exactChunkRetry ? Collections.singletonList(failed) : blobs.get(0).getChunks(),
+            blobs.get(0).getBlobStats(),
+            blobs.get(0).getSpansMixedTables());
+    ArrayDeque<String> responses = new ArrayDeque<>();
+    responses.add(objectMapper.writeValueAsString(initial));
+    responses.add(
+        objectMapper.writeValueAsString(
+            registrationResponse(Collections.singletonList(retryBlob))));
+    List<JsonNode> requests = new ArrayList<>();
+    apiOverride.addSerializedJsonOverride(
+        REGISTER_BLOB_ENDPOINT,
+        request -> {
+          try {
+            requests.add(
+                objectMapper.readTree(
+                    IOUtils.toString(
+                        ((HttpPost) request).getEntity().getContent(), StandardCharsets.UTF_8)));
+            return Pair.of(HttpStatus.SC_OK, responses.removeFirst());
+          } catch (IOException e) {
+            throw new RuntimeException(e);
+          }
+        });
+    clientInternal.getChannelCache().addChannel(channel1);
+    clientInternal.getChannelCache().addChannel(channel2);
+    clientInternal.registerBlobs(blobs);
+    Assert.assertEquals(2, requests.size());
+    JsonNode originalBlob = requests.get(0).get("blobs").get(0);
+    JsonNode retriedBlobs = requests.get(1).get("blobs");
+    Assert.assertEquals(1, retriedBlobs.size());
+    Assert.assertEquals(exactChunkRetry ? 1 : 2, retriedBlobs.get(0).get("chunks").size());
+    if (!exactChunkRetry) {
+      Assert.assertEquals(originalBlob.get("chunks"), retriedBlobs.get(0).get("chunks"));
+    }
+    Assert.assertEquals(
+        originalBlob.get("chunks").get(0), retriedBlobs.get(0).get("chunks").get(0));
+    Assert.assertEquals(originalBlob.get("path"), retriedBlobs.get(0).get("path"));
+    Assert.assertEquals(originalBlob.get("md5"), retriedBlobs.get(0).get("md5"));
+    Assert.assertEquals(
+        originalBlob.get("spans_mixed_tables"), retriedBlobs.get(0).get("spans_mixed_tables"));
+    Assert.assertTrue(channel1.isValid());
+    Assert.assertTrue(channel2.isValid());
   }
 
   @Test
@@ -784,9 +942,9 @@ public class SnowflakeStreamingIngestClientTest {
     Set<ChunkRegisterStatus> badChunks = testData.getRight();
 
     ChunkRegisterStatus goodChunkRegisterStatus = new ChunkRegisterStatus();
-    goodChunkRegisterStatus.setDBName(blobs.get(0).getChunks().get(0).getDBName());
-    goodChunkRegisterStatus.setSchemaName(blobs.get(0).getChunks().get(0).getSchemaName());
-    goodChunkRegisterStatus.setTableName(blobs.get(0).getChunks().get(0).getTableName());
+    goodChunkRegisterStatus.setDBName(blobs.get(0).getChunks().get(1).getDBName());
+    goodChunkRegisterStatus.setSchemaName(blobs.get(0).getChunks().get(1).getSchemaName());
+    goodChunkRegisterStatus.setTableName(blobs.get(0).getChunks().get(1).getTableName());
     ChannelRegisterStatus goodStatus1 = new ChannelRegisterStatus();
     goodStatus1.setStatusCode(RESPONSE_SUCCESS);
     goodStatus1.setChannelName("channel3");
@@ -794,9 +952,9 @@ public class SnowflakeStreamingIngestClientTest {
     goodChunkRegisterStatus.setChannelsStatus(Collections.singletonList(goodStatus1));
 
     ChunkRegisterStatus goodChunkRegisterStatus2 = new ChunkRegisterStatus();
-    goodChunkRegisterStatus2.setDBName(blobs.get(0).getChunks().get(0).getDBName());
-    goodChunkRegisterStatus2.setSchemaName(blobs.get(0).getChunks().get(0).getSchemaName());
-    goodChunkRegisterStatus2.setTableName(blobs.get(0).getChunks().get(0).getTableName());
+    goodChunkRegisterStatus2.setDBName(blobs.get(1).getChunks().get(0).getDBName());
+    goodChunkRegisterStatus2.setSchemaName(blobs.get(1).getChunks().get(0).getSchemaName());
+    goodChunkRegisterStatus2.setTableName(blobs.get(1).getChunks().get(0).getTableName());
     ChannelRegisterStatus goodStatus2 = new ChannelRegisterStatus();
     goodStatus2.setStatusCode(RESPONSE_SUCCESS);
     goodStatus2.setChannelName("channel4");
@@ -815,17 +973,18 @@ public class SnowflakeStreamingIngestClientTest {
 
     List<BlobRegisterStatus> blobRegisterStatuses = new ArrayList<>();
     BlobRegisterStatus blobRegisterStatus1 = new BlobRegisterStatus();
-    blobRegisterStatus1.setChunksStatus(new ArrayList<>(badChunks));
+    List<ChunkRegisterStatus> firstBlobChunks = new ArrayList<>(badChunks);
+    firstBlobChunks.add(goodChunkRegisterStatus);
+    blobRegisterStatus1.setChunksStatus(firstBlobChunks);
     blobRegisterStatuses.add(blobRegisterStatus1);
     BlobRegisterStatus blobRegisterStatus2 = new BlobRegisterStatus();
-    blobRegisterStatus2.setChunksStatus(Collections.singletonList(goodChunkRegisterStatus));
+    blobRegisterStatus2.setChunksStatus(Collections.singletonList(goodChunkRegisterStatus2));
     blobRegisterStatuses.add(blobRegisterStatus2);
-    BlobRegisterStatus blobRegisterStatus3 = new BlobRegisterStatus();
-    blobRegisterStatus3.setChunksStatus(Collections.singletonList(goodChunkRegisterStatus2));
-    blobRegisterStatuses.add(blobRegisterStatus3);
     initialResponse.setBlobsStatus(blobRegisterStatuses);
 
-    retryResponse.setBlobsStatus(Collections.singletonList(blobRegisterStatus1));
+    BlobRegisterStatus retryBlobStatus = new BlobRegisterStatus();
+    retryBlobStatus.setChunksStatus(new ArrayList<>(badChunks));
+    retryResponse.setBlobsStatus(Collections.singletonList(retryBlobStatus));
 
     String responseString = objectMapper.writeValueAsString(initialResponse);
     String retryResponseString = objectMapper.writeValueAsString(retryResponse);
@@ -942,9 +1101,9 @@ public class SnowflakeStreamingIngestClientTest {
     Set<ChunkRegisterStatus> badChunks = testData.getRight();
 
     ChunkRegisterStatus goodChunkRegisterStatus = new ChunkRegisterStatus();
-    goodChunkRegisterStatus.setDBName(blobs.get(0).getChunks().get(0).getDBName());
-    goodChunkRegisterStatus.setSchemaName(blobs.get(0).getChunks().get(0).getSchemaName());
-    goodChunkRegisterStatus.setTableName(blobs.get(0).getChunks().get(0).getTableName());
+    goodChunkRegisterStatus.setDBName(blobs.get(0).getChunks().get(1).getDBName());
+    goodChunkRegisterStatus.setSchemaName(blobs.get(0).getChunks().get(1).getSchemaName());
+    goodChunkRegisterStatus.setTableName(blobs.get(0).getChunks().get(1).getTableName());
     ChannelRegisterStatus goodStatus1 = new ChannelRegisterStatus();
     goodStatus1.setStatusCode(RESPONSE_SUCCESS);
     goodStatus1.setChannelName("channel3");
@@ -952,9 +1111,9 @@ public class SnowflakeStreamingIngestClientTest {
     goodChunkRegisterStatus.setChannelsStatus(Collections.singletonList(goodStatus1));
 
     ChunkRegisterStatus goodChunkRegisterStatus2 = new ChunkRegisterStatus();
-    goodChunkRegisterStatus2.setDBName(blobs.get(0).getChunks().get(0).getDBName());
-    goodChunkRegisterStatus2.setSchemaName(blobs.get(0).getChunks().get(0).getSchemaName());
-    goodChunkRegisterStatus2.setTableName(blobs.get(0).getChunks().get(0).getTableName());
+    goodChunkRegisterStatus2.setDBName(blobs.get(1).getChunks().get(0).getDBName());
+    goodChunkRegisterStatus2.setSchemaName(blobs.get(1).getChunks().get(0).getSchemaName());
+    goodChunkRegisterStatus2.setTableName(blobs.get(1).getChunks().get(0).getTableName());
     ChannelRegisterStatus goodStatus2 = new ChannelRegisterStatus();
     goodStatus2.setStatusCode(RESPONSE_SUCCESS);
     goodStatus2.setChannelName("channel4");
@@ -999,14 +1158,13 @@ public class SnowflakeStreamingIngestClientTest {
 
     List<BlobRegisterStatus> blobRegisterStatuses = new ArrayList<>();
     BlobRegisterStatus blobRegisterStatus1 = new BlobRegisterStatus();
-    blobRegisterStatus1.setChunksStatus(new ArrayList<>(badChunks));
+    List<ChunkRegisterStatus> firstBlobChunks = new ArrayList<>(badChunks);
+    firstBlobChunks.add(goodChunkRegisterStatus);
+    blobRegisterStatus1.setChunksStatus(firstBlobChunks);
     blobRegisterStatuses.add(blobRegisterStatus1);
     BlobRegisterStatus blobRegisterStatus2 = new BlobRegisterStatus();
-    blobRegisterStatus2.setChunksStatus(Collections.singletonList(goodChunkRegisterStatus));
+    blobRegisterStatus2.setChunksStatus(Collections.singletonList(goodChunkRegisterStatus2));
     blobRegisterStatuses.add(blobRegisterStatus2);
-    BlobRegisterStatus blobRegisterStatus3 = new BlobRegisterStatus();
-    blobRegisterStatus3.setChunksStatus(Collections.singletonList(goodChunkRegisterStatus2));
-    blobRegisterStatuses.add(blobRegisterStatus3);
     initialResponse.setBlobsStatus(blobRegisterStatuses);
 
     BlobRegisterStatus retryBlobRegisterStatus = new BlobRegisterStatus();
