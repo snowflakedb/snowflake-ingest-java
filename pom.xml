@@ -109,6 +109,18 @@
         <type>pom</type>
         <scope>import</scope>
       </dependency>
+      <!-- Unused by S3/KMS; only Kinesis enables CBOR in AWS SDK 1.x -->
+      <dependency>
+        <groupId>com.amazonaws</groupId>
+        <artifactId>aws-java-sdk-core</artifactId>
+        <version>${amazonaws.version}</version>
+        <exclusions>
+          <exclusion>
+            <groupId>com.fasterxml.jackson.dataformat</groupId>
+            <artifactId>jackson-dataformat-cbor</artifactId>
+          </exclusion>
+        </exclusions>
+      </dependency>
       <dependency>
         <groupId>com.google.api-client</groupId>
         <artifactId>google-api-client</artifactId>
@@ -635,7 +647,6 @@
     <dependency>
       <groupId>com.amazonaws</groupId>
       <artifactId>aws-java-sdk-core</artifactId>
-      <version>${amazonaws.version}</version>
       <exclusions>
         <exclusion>
           <groupId>commons-logging</groupId>
