@@ -11,11 +11,11 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.Lists;
 import java.util.Iterator;
 import java.util.List;
-import javax.annotation.Nonnull;
 import org.apache.iceberg.parquet.TypeToMessageType;
 import org.apache.iceberg.types.Type;
 import org.apache.iceberg.types.Types;
 import org.apache.iceberg.util.JsonUtil;
+import org.jspecify.annotations.NonNull;
 
 /**
  * This class is used to Iceberg data type (include primitive types and nested types) serialization
@@ -117,7 +117,7 @@ public class IcebergDataTypeParser {
    * @param jsonNode JsonNode parsed from Iceberg type string.
    * @return Iceberg data type
    */
-  public static Type getTypeFromJson(@Nonnull JsonNode jsonNode) {
+  public static Type getTypeFromJson(@NonNull JsonNode jsonNode) {
     if (jsonNode.isTextual()) {
       return Types.fromPrimitiveString(jsonNode.asText());
     } else if (jsonNode.isObject()) {
@@ -146,7 +146,7 @@ public class IcebergDataTypeParser {
    * @param json JsonNode parsed from Iceberg type string.
    * @return struct type
    */
-  public static @Nonnull Types.StructType structFromJson(@Nonnull JsonNode json) {
+  public static Types.@NonNull StructType structFromJson(@NonNull JsonNode json) {
     if (!json.has(FIELDS)) {
       throw new IllegalArgumentException(
           String.format("Missing key '%s' in schema: %s", FIELDS, json));

@@ -9,11 +9,11 @@ import java.math.BigInteger;
 import java.math.RoundingMode;
 import java.time.ZoneId;
 import java.util.Optional;
-import javax.annotation.Nullable;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
 import org.apache.parquet.schema.PrimitiveType;
+import org.jspecify.annotations.Nullable;
 
 /** Parses a user Snowflake column value into Parquet internal representation for buffering. */
 class SnowflakeParquetValueParser {
