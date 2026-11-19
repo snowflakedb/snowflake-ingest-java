@@ -5,8 +5,8 @@
 package net.snowflake.ingest.streaming.internal;
 
 import com.google.common.annotations.VisibleForTesting;
-import javax.annotation.Nonnull;
 import net.snowflake.ingest.utils.Utils;
+import org.jspecify.annotations.NonNull;
 
 /**
  * Class to carry around the table pointer across the SDK codebase. This is being retrofitted into
@@ -21,7 +21,7 @@ public class TableRef {
   final String fullyQualifiedName;
 
   @VisibleForTesting
-  public TableRef(@Nonnull String dbName, @Nonnull String schemaName, @Nonnull String tableName) {
+  public TableRef(@NonNull String dbName, @NonNull String schemaName, @NonNull String tableName) {
     this.dbName = dbName;
     this.schemaName = schemaName;
     this.tableName = tableName;

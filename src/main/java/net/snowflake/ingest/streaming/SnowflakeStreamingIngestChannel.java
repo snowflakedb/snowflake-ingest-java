@@ -7,9 +7,9 @@ package net.snowflake.ingest.streaming;
 import java.time.ZoneId;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import javax.annotation.Nullable;
 import net.snowflake.ingest.streaming.internal.ColumnProperties;
 import net.snowflake.ingest.utils.SFException;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A logical partition that represents a connection to a single Snowflake table, data will be
@@ -306,8 +306,7 @@ public interface SnowflakeStreamingIngestChannel {
    *     name this will throw an exception as the current instant is not the active version of the
    *     channel.
    */
-  @Nullable
-  String getLatestCommittedOffsetToken();
+  @Nullable String getLatestCommittedOffsetToken();
 
   /**
    * Gets the table schema associated with this channel. Note that this is the table schema at the
