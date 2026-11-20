@@ -106,6 +106,12 @@
     </LinkageError>
     <LinkageError>
         <Target>
+            <Package name="org.xerial.snappy"/>
+        </Target>
+        <Reason>The SDK does not use Snappy compression</Reason>
+    </LinkageError>
+    <LinkageError>
+        <Target>
             <Package name="org.apache.curator"/>
         </Target>
         <Reason>Client library for Apache ZooKeeper, not used in the SDK</Reason>
