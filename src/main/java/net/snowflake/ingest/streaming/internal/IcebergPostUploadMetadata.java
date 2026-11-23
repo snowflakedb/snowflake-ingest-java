@@ -5,7 +5,7 @@
 package net.snowflake.ingest.streaming.internal;
 
 import java.util.Optional;
-import javax.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /** Stores Iceberg post-upload metadata. */
 class IcebergPostUploadMetadata {

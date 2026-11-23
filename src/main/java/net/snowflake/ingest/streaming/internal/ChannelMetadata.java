@@ -5,8 +5,8 @@
 package net.snowflake.ingest.streaming.internal;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import javax.annotation.Nullable;
 import net.snowflake.ingest.utils.Utils;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Metadata for a Streaming Ingest channel that sends to Snowflake as part of the register blob

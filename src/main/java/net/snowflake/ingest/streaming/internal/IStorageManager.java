@@ -6,7 +6,7 @@ package net.snowflake.ingest.streaming.internal;
 
 import com.google.common.annotations.VisibleForTesting;
 import java.util.Optional;
-import javax.annotation.Nullable;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Interface to manage {@link InternalStage} and {@link PresignedUrlExternalVolume} for {@link
