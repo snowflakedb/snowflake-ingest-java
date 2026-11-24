@@ -18,8 +18,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 import net.snowflake.ingest.streaming.DropChannelRequest;
 import net.snowflake.ingest.streaming.InsertValidationResponse;
 import net.snowflake.ingest.streaming.OffsetTokenVerificationFunction;
@@ -30,6 +28,8 @@ import net.snowflake.ingest.utils.Logging;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
 import org.apache.parquet.column.ParquetProperties;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
 
 /**
  * The first version of implementation for SnowflakeStreamingIngestChannel
@@ -77,7 +77,7 @@ class SnowflakeStreamingIngestChannelInternal<T> implements SnowflakeStreamingIn
       String endOffsetToken,
       Long channelSequencer,
       Long rowSequencer,
-      @Nonnull SnowflakeStreamingIngestClientInternal<T> client,
+      @NonNull SnowflakeStreamingIngestClientInternal<T> client,
       String encryptionKey,
       Long encryptionKeyId,
       OpenChannelRequest.OnErrorOption onErrorOption,

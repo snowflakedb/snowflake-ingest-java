@@ -45,7 +45,6 @@ import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import javax.annotation.Nullable;
 import javax.net.ssl.TrustManager;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.ArgSupplier;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.log.SFLogger;
@@ -74,6 +73,7 @@ import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.http.protocol.HttpContext;
 import org.apache.http.ssl.SSLInitializationException;
+import org.jspecify.annotations.Nullable;
 
 /** HttpUtil class */
 public class JdbcHttpUtil {

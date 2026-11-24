@@ -13,12 +13,12 @@ import java.util.Optional;
 import java.util.TimeZone;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-import javax.annotation.Nullable;
 import net.snowflake.ingest.connection.IngestResponseException;
 import net.snowflake.ingest.streaming.internal.fileTransferAgent.SnowflakeSQLException;
 import net.snowflake.ingest.utils.ErrorCode;
 import net.snowflake.ingest.utils.SFException;
 import net.snowflake.ingest.utils.Utils;
+import org.jspecify.annotations.Nullable;
 
 /** Class to manage single Snowflake internal stage */
 class InternalStageManager implements IStorageManager {
