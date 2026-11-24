@@ -77,7 +77,6 @@
     <protobuf.version>4.27.5</protobuf.version>
     <shadeBase>net.snowflake.ingest.internal</shadeBase>
     <slf4j.version>1.7.36</slf4j.version>
-    <snappy.version>1.1.10.5</snappy.version>
     <snowjdbc.version>3.25.1</snowjdbc.version>
     <threetenbp.version>1.7.0</threetenbp.version>
     <version.plugin.buildhelper>3.6.1</version.plugin.buildhelper>
@@ -410,6 +409,11 @@
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-reload4j</artifactId>
           </exclusion>
+          <!-- The SDK only writes GZIP/ZSTD Parquet and never decompresses, so Snappy is never used -->
+          <exclusion>
+            <groupId>org.xerial.snappy</groupId>
+            <artifactId>snappy-java</artifactId>
+          </exclusion>
         </exclusions>
       </dependency>
       <dependency>
@@ -510,6 +514,11 @@
             <groupId>com.github.luben</groupId>
             <artifactId>zstd-jni</artifactId>
           </exclusion>
+          <!-- The SDK only writes GZIP/ZSTD Parquet and never decompresses, so Snappy is never used -->
+          <exclusion>
+            <groupId>org.xerial.snappy</groupId>
+            <artifactId>snappy-java</artifactId>
+          </exclusion>
         </exclusions>
       </dependency>
       <dependency>
@@ -571,11 +580,6 @@
         <groupId>org.threeten</groupId>
         <artifactId>threetenbp</artifactId>
         <version>${threetenbp.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.xerial.snappy</groupId>
-        <artifactId>snappy-java</artifactId>
-        <version>${snappy.version}</version>
       </dependency>
 
       <!-- JUnit so that we can make some basic unit tests -->
@@ -1046,11 +1050,6 @@
     <dependency>
       <groupId>org.slf4j</groupId>
       <artifactId>jcl-over-slf4j</artifactId>
-      <scope>runtime</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.xerial.snappy</groupId>
-      <artifactId>snappy-java</artifactId>
       <scope>runtime</scope>
     </dependency>
 

@@ -67,7 +67,6 @@ ADDITIONAL_LICENSES_MAP = {
     "com.google.re2j:re2j": GO_LICENSE_ALT,
     "com.google.protobuf:protobuf-java": BSD_3_CLAUSE_LICENSE,
     "com.google.code.gson:gson": APACHE_LICENSE,
-    "org.xerial.snappy:snappy-java": APACHE_LICENSE,
     "org.apache.parquet:parquet-common": APACHE_LICENSE,
     "org.apache.parquet:parquet-format-structures": APACHE_LICENSE,
     "com.github.luben:zstd-jni": BSD_2_CLAUSE_LICENSE,
