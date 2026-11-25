@@ -1,5 +1,5 @@
 pipeline {
-    agent { label 'parallelizable-c7' }
+    agent { label 'parallelizable-snowos' }
     options { timestamps() }
     environment {
         ingest_sdk_dir = "${WORKSPACE}/snowflake-ingest-java"
