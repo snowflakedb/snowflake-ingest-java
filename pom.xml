@@ -641,6 +641,11 @@
       <artifactId>aws-java-sdk-core</artifactId>
       <version>${amazonaws.version}</version>
       <exclusions>
+        <!-- Only CBOR-protocol AWS clients (e.g. Kinesis) use this; S3 and KMS never do -->
+        <exclusion>
+          <groupId>com.fasterxml.jackson.dataformat</groupId>
+          <artifactId>jackson-dataformat-cbor</artifactId>
+        </exclusion>
         <exclusion>
           <groupId>commons-logging</groupId>
           <artifactId>commons-logging</artifactId>
