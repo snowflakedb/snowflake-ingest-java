@@ -468,4 +468,43 @@ public class ParameterProviderTest {
         TestUtils.createParameterProvider(parameterMap, prop, enableIcebergStreaming);
     Assert.assertFalse(parameterProvider.isEnableNewJsonParsingLogic());
   }
+
+  @Test
+  public void exactChunkRetryDefaultsToEnabled() {
+    Assert.assertTrue(
+        TestUtils.createParameterProvider(null, null, enableIcebergStreaming)
+            .isEnableExactChunkRetry());
+  }
+
+  @Test
+  public void exactChunkRetryCanBeDisabledByProperties() {
+    Properties prop = new Properties();
+    prop.setProperty(ParameterProvider.ENABLE_EXACT_CHUNK_RETRY, "false");
+    Assert.assertFalse(
+        TestUtils.createParameterProvider(null, prop, enableIcebergStreaming)
+            .isEnableExactChunkRetry());
+  }
+
+  @Test
+  public void exactChunkRetryBooleanOverrideTakesPrecedence() {
+    Properties prop = new Properties();
+    Map<String, Object> parameters = new HashMap<>();
+    for (boolean enabled : new boolean[] {false, true}) {
+      prop.setProperty(ParameterProvider.ENABLE_EXACT_CHUNK_RETRY, String.valueOf(!enabled));
+      parameters.put(ParameterProvider.ENABLE_EXACT_CHUNK_RETRY, enabled);
+      Assert.assertEquals(
+          enabled,
+          TestUtils.createParameterProvider(parameters, prop, enableIcebergStreaming)
+              .isEnableExactChunkRetry());
+    }
+  }
+
+  @Test
+  public void exactChunkRetryAcceptsStringOverride() {
+    Map<String, Object> parameters = new HashMap<>();
+    parameters.put(ParameterProvider.ENABLE_EXACT_CHUNK_RETRY, "false");
+    Assert.assertFalse(
+        TestUtils.createParameterProvider(parameters, null, enableIcebergStreaming)
+            .isEnableExactChunkRetry());
+  }
 }
